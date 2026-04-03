@@ -16,23 +16,47 @@
         </header>
 
         <main>
+            <div class="mode-switch">
+                <button id="mode-icm" class="btn-tab active">ICM EV</button>
+                <button id="mode-range" class="btn-tab">Range Analyzer</button>
+            </div>
+
             <section class="card-section" id="payouts-section">
+                <!-- Payouts section remains same -->
                 <div class="section-header">
                     <h2><span class="icon">🏆</span> 賞金構造 (Payouts)</h2>
                     <button id="add-payout" class="btn-icon">+</button>
                 </div>
-                <div id="payout-list" class="input-list">
-                    <!-- Payout inputs will be injected here -->
-                </div>
+                <div id="payout-list" class="input-list"></div>
             </section>
 
+            <!-- ICM EV Mode specific -->
             <section class="card-section" id="players-section">
                 <div class="section-header">
                     <h2><span class="icon">👤</span> プレイヤーとスタック</h2>
                     <button id="add-player" class="btn-icon">+</button>
                 </div>
-                <div id="player-list" class="input-list">
-                    <!-- Player inputs will be injected here -->
+                <div id="player-list" class="input-list"></div>
+            </section>
+
+            <!-- Range Analyzer Mode specific -->
+            <section class="card-section hidden" id="range-settings-section">
+                <div class="section-header">
+                    <h2><span class="icon">🎯</span> 分析設定 (vs All-in)</h2>
+                </div>
+                <div class="input-list">
+                    <div class="input-row-range">
+                        <label>Hero (あなた)</label>
+                        <select id="hero-select" class="range-select"></select>
+                    </div>
+                    <div class="input-row-range">
+                        <label>Villain (プッシュ側)</label>
+                        <select id="villain-select" class="range-select"></select>
+                    </div>
+                    <div class="input-row-range">
+                        <label>相手のプッシュレンジ (%)</label>
+                        <input type="number" id="villain-range-pct" value="30" min="1" max="100">
+                    </div>
                 </div>
             </section>
 
@@ -40,7 +64,21 @@
                 <button id="calc-btn" class="btn-primary">計算する (Calculate)</button>
             </div>
 
+            <!-- Heatmap Container -->
+            <section class="results-section hidden" id="heatmap-section">
+                <h2>コール推奨レンジ</h2>
+                <div class="heatmap-wrapper">
+                    <div id="heatmap-grid" class="heatmap-grid"></div>
+                </div>
+                <div class="heatmap-legend">
+                    <span class="legend-item"><span class="box call"></span> Call</span>
+                    <span class="legend-item"><span class="box fold"></span> Fold</span>
+                    <span id="req-equity-display" class="req-equity">Req. Equity: 0%</span>
+                </div>
+            </section>
+
             <section class="results-section hidden" id="results-display">
+                <!-- EV Results section -->
                 <h2>計算結果 (EV)</h2>
                 <div id="result-list" class="result-cards">
                     <!-- Results will be injected here -->

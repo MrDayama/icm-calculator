@@ -221,16 +221,100 @@ input:focus {
     color: var(--text-dim);
 }
 
-.total-prize-pool {
-    text-align: center;
-    margin-top: 1rem;
-    color: var(--text-dim);
-    font-size: 0.9rem;
+.mode-switch {
+    display: flex;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 2rem;
 }
 
-footer {
-    text-align: center;
-    padding: 2rem 0;
+.btn-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
     color: var(--text-dim);
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-tab.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 6px -1px var(--primary-glow);
+}
+
+.input-row-range {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.range-select {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border);
+    color: white;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 1rem;
+    appearance: none;
+}
+
+/* Heatmap Grid */
+.heatmap-wrapper {
+    background: var(--card-bg);
+    padding: 8px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    margin: 1rem 0;
+    overflow: hidden;
+}
+
+.heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(13, 1fr);
+    gap: 2px;
+}
+
+.hand-cell {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5px; /* Extremely small text or no text for visual only */
+    border-radius: 2px;
+    background: #1e293b;
+    color: rgba(255,255,255,0.3);
+}
+
+.hand-cell.call {
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+    color: white;
+}
+
+.hand-cell.fold {
+    background: #334155;
+}
+
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 15px;
     font-size: 0.8rem;
+    color: var(--text-dim);
+}
+
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.box { width: 12px; height: 12px; border-radius: 2px; }
+.box.call { background: #4ade80; }
+.box.fold { background: #334155; }
+.req-equity { margin-left: auto; font-weight: 600; color: var(--primary); }
+
+@media (max-width: 400px) {
+    .hand-cell { font-size: 0; } /* Hide text on very small screens */
 }
