@@ -61,7 +61,7 @@ function calculateICM(stacks, payouts) {
             return currentEVs;
         }
 
-        const currentPrize = fullPayouts[payout_idx] || 0;
+        const currentPrize = fullPayouts[payoutIdx] || 0;
         playerIndices.forEach(p => {
             const prob = (stacks[p] || 0) / subsetTotal;
             const remaining = playerIndices.filter(i => i !== p);
