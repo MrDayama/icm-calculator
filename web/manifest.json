@@ -1,0 +1,16 @@
+{
+  "name": "ICM Poker Calculator",
+  "short_name": "ICM Pro",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "description": "Professional Independent Chip Model (ICM) calculator.",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3067/3067451.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

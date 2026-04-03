@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ICM Calculator - Poker Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>ICM Calculator</h1>
+            <div class="status-badge">Professional Edition</div>
+        </header>
+
+        <main>
+            <section class="card-section" id="payouts-section">
+                <div class="section-header">
+                    <h2><span class="icon">🏆</span> 賞金構造 (Payouts)</h2>
+                    <button id="add-payout" class="btn-icon">+</button>
+                </div>
+                <div id="payout-list" class="input-list">
+                    <!-- Payout inputs will be injected here -->
+                </div>
+            </section>
+
+            <section class="card-section" id="players-section">
+                <div class="section-header">
+                    <h2><span class="icon">👤</span> プレイヤーとスタック</h2>
+                    <button id="add-player" class="btn-icon">+</button>
+                </div>
+                <div id="player-list" class="input-list">
+                    <!-- Player inputs will be injected here -->
+                </div>
+            </section>
+
+            <div class="action-container">
+                <button id="calc-btn" class="btn-primary">計算する (Calculate)</button>
+            </div>
+
+            <section class="results-section hidden" id="results-display">
+                <h2>計算結果 (EV)</h2>
+                <div id="result-list" class="result-cards">
+                    <!-- Results will be injected here -->
+                </div>
+                <div class="total-prize-pool">
+                    合計賞金: <span id="total-payout-display">0</span>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>© 2026 Poker ICM Pro Tools</p>
+        </footer>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
