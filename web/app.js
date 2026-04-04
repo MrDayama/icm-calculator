@@ -1,40 +1,35 @@
 /** 
- * ICM Calculator & Range Analyzer (Stability Optimized v1.0.6)
+ * ICM Calculator & Range Analyzer (High Precision v1.0.7)
  */
 
 const RANKS = 'AKQJT98765432';
 let villainSelectedHands = new Set();
 
+// --- ユーティリティ ---
 function getCombos(hand) {
     if (hand.length === 2) return 6;
     if (hand.endsWith('s')) return 4;
     return 12;
 }
 
-function updateVillainRangeStats() {
+function updateStats(handsSet, displayId, comboId) {
     let totalCombos = 0;
-    villainSelectedHands.forEach(hand => { totalCombos += getCombos(hand); });
+    handsSet.forEach(h => { totalCombos += getCombos(h); });
     const pct = ((totalCombos / 1326) * 100).toFixed(1);
-    const disp = document.getElementById('villain-range-display');
-    const cDisp = document.getElementById('villain-combos-display');
+    const disp = document.getElementById(displayId);
+    const cDisp = document.getElementById(comboId);
     if (disp) disp.innerText = `${pct}%`;
     if (cDisp) cDisp.innerText = totalCombos;
     return parseFloat(pct);
 }
 
-/**
- * 修正済みICM計算エンジン (Prize EV算出)
- */
+// --- ICM計算エンジン ---
 function calculateICM(stacks, payouts) {
     const n = stacks.length;
     if (n === 0) return [];
-    
-    // 賞金リストの調整
     const actualPayouts = payouts.slice(0, n);
     const fullPayouts = [...actualPayouts, ...new Array(Math.max(0, n - actualPayouts.length)).fill(0)];
-    
-    // BB正規化 (内部的な計算安定化のため)
-    const normStacks = stacks.map(s => Math.max(0, parseFloat(s) || 0) / 10.0);
+    const normStacks = stacks.map(s => Math.max(0.1, parseFloat(s) || 0) / 10.0);
     const cache = new Map();
 
     function computePrizeEVs(playerIndices, payoutIdx) {
@@ -69,11 +64,8 @@ function calculateICM(stacks, payouts) {
             const probWinsThisPlace = (normStacks[p] || 0) / subsetTotal;
             const remainingPlayers = playerIndices.filter(i => i !== p);
             const subRes = computePrizeEVs(remainingPlayers, payoutIdx + 1);
-            
             evs[p] += probWinsThisPlace * currentPrizeValue;
-            for (const q in subRes) {
-                evs[q] += probWinsThisPlace * subRes[q];
-            }
+            for (const q in subRes) evs[q] += probWinsThisPlace * subRes[q];
         });
 
         cache.set(key, evs);
@@ -85,17 +77,28 @@ function calculateICM(stacks, payouts) {
     return allIndices.map(i => resultDict[i] || 0);
 }
 
+// --- 高精度勝率モデル (v1.0.7) ---
 function getEquity(hand, vRangePct) {
     const r1 = hand[0], r2 = hand[1];
     const v1 = RANKS.indexOf(r1), v2 = RANKS.indexOf(r2);
-    if (v1 === -1 || v2 === -1) return 0.5;
     const isPair = r1 === r2, isSuited = hand.endsWith('s');
-    let basePower = isPair ? 0.5 + ((12 - v1) / 12) * 0.35 : 0.3 + ((12 - v1) / 12) * 0.2 + ((12 - v2) / 12) * 0.15;
-    if (isSuited) basePower += 0.04;
-    const tightness = 1.0 - (Math.max(1, vRangePct) / 100);
-    return Math.max(0.05, Math.min(0.95, basePower - (tightness * 0.2)));
+    
+    // ベース勝率テーブルの改良
+    let power;
+    if (isPair) {
+        power = 0.8 + ((12 - v1) / 12) * 0.15; // AA=0.95, 22=0.8
+    } else {
+        // ハイカード重視
+        power = 0.45 + ((12 - v1) / 12) * 0.2 + ((12 - v2) / 12) * 0.1;
+        if (isSuited) power += 0.05;
+    }
+
+    const vTightness = 1.0 - (vRangePct / 100);
+    // 相手がタイトなほど勝率は大幅に下がる
+    return Math.max(0.1, Math.min(0.95, power - (vTightness * 0.25)));
 }
 
+// --- UI制御 ---
 document.addEventListener('DOMContentLoaded', () => {
     let currentMode = 'icm';
     const elements = {
@@ -104,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         rangeSettings: document.getElementById('range-settings-section'),
         playersSection: document.getElementById('players-section'),
         resultsDisplay: document.getElementById('results-display'),
-        resultCards: document.getElementById('result-list'), 
+        resultCards: document.getElementById('result-list'),
         heatmapSection: document.getElementById('heatmap-section'),
         heatmapGrid: document.getElementById('heatmap-grid'),
         vGrid: document.getElementById('villain-heatmap-grid'),
@@ -119,27 +122,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateSelectionPool() {
         if (!elements.heroSelect || !elements.villainSelect) return;
-        const currentH = elements.heroSelect.value, currentV = elements.villainSelect.value;
-        const names = Array.from(document.querySelectorAll('.player-name')).map((inp, i) => inp.value || `Player ${i+1}`);
+        const hVal = elements.heroSelect.value, vVal = elements.villainSelect.value;
+        const playerInputs = document.querySelectorAll('.player-name');
         elements.heroSelect.innerHTML = ''; elements.villainSelect.innerHTML = '';
-        names.forEach((name, i) => {
+        playerInputs.forEach((inp, i) => {
+            const name = inp.value || `Player ${i+1}`;
             elements.heroSelect.add(new Option(name, i));
             elements.villainSelect.add(new Option(name, i));
         });
-        if (currentH && elements.heroSelect.options[currentH]) elements.heroSelect.value = currentH;
-        if (currentV && elements.villainSelect.options[currentV]) elements.villainSelect.value = currentV;
+        if (hVal !== "" && elements.heroSelect.options[hVal]) elements.heroSelect.value = hVal;
+        if (vVal !== "" && elements.villainSelect.options[vVal]) elements.villainSelect.value = vVal;
         else if (elements.villainSelect.options.length > 1) elements.villainSelect.selectedIndex = 1;
     }
 
     function updateMode() {
+        elements.resultsDisplay.classList.add('hidden');
+        elements.heatmapSection.classList.add('hidden');
         if (currentMode === 'icm') {
             elements.rangeSettings.classList.add('hidden');
-            elements.resultsDisplay.classList.add('hidden');
-            elements.heatmapSection.classList.add('hidden');
         } else {
             elements.rangeSettings.classList.remove('hidden');
-            elements.resultsDisplay.classList.add('hidden');
-            elements.heatmapSection.classList.add('hidden');
             updateSelectionPool();
         }
     }
@@ -147,12 +149,12 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.modeIcm.onclick = () => { currentMode = 'icm'; elements.modeIcm.classList.add('active'); elements.modeRange.classList.remove('active'); updateMode(); };
     elements.modeRange.onclick = () => { currentMode = 'range'; elements.modeRange.classList.add('active'); elements.modeIcm.classList.remove('active'); updateMode(); };
 
-    function createRow(list, type, val = "", stackVal = "") {
+    function createRow(list, type, val = "", sVal = "") {
         const div = document.createElement('div');
         div.className = 'input-row';
         if (type === 'player') {
             div.style.gridTemplateColumns = '1fr 100px 40px';
-            div.innerHTML = `<input type="text" class="player-name" value="${val}" placeholder="Name"><input type="number" class="player-stack" value="${stackVal}" placeholder="Stack (BB)" step="any"><button class="btn-remove">×</button>`;
+            div.innerHTML = `<input type="text" class="player-name" value="${val}" placeholder="Name"><input type="number" class="player-stack" value="${sVal}" placeholder="Stack (BB)" step="any"><button class="btn-remove">×</button>`;
             div.querySelector('.player-name').oninput = updateSelectionPool;
         } else {
             div.innerHTML = `<label>賞金</label><input type="number" class="payout-input" value="${val}" placeholder="Value" step="any"><button class="btn-remove">×</button>`;
@@ -175,21 +177,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 cell.onclick = () => {
                     if (villainSelectedHands.has(h)) { villainSelectedHands.delete(h); cell.classList.remove('selected'); }
                     else { villainSelectedHands.add(h); cell.classList.add('selected'); }
-                    updateVillainRangeStats();
+                    updateStats(villainSelectedHands, 'villain-range-display', 'villain-combos-display');
                 };
-                if (['AA','KK','QQ','JJ','TT','AKs','AQs','AKo','AJs'].includes(h)) { villainSelectedHands.add(h); cell.classList.add('selected'); }
+                if (['AA','KK','QQ','JJ','TT','99','AKs','AQs','AJs','KQs','AKo','AQo'].includes(h)) { villainSelectedHands.add(h); cell.classList.add('selected'); }
                 elements.vGrid.appendChild(cell);
             }
         }
-        updateVillainRangeStats();
+        updateStats(villainSelectedHands, 'villain-range-display', 'villain-combos-display');
     }
 
-    // 初回ロード
+    // セットアップ
     [50, 30, 20].forEach(v => createRow(elements.payoutList, 'payout', v));
     [100, 80, 50, 30, 20].forEach((s, idx) => createRow(elements.playerList, 'player', `Player ${idx+1}`, s));
     initVillainBoard();
     updateSelectionPool();
 
+    // --- 計算メインルーチン ---
     elements.calcBtn.onclick = () => {
         try {
             const p = Array.from(document.querySelectorAll('.payout-input')).map(i => parseFloat(i.value) || 0);
@@ -213,28 +216,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.heatmapSection.classList.add('hidden');
             } else {
                 const hIdx = parseInt(elements.heroSelect.value), vIdx = parseInt(elements.villainSelect.value);
-                if (hIdx === vIdx) throw new Error("HeroとVillainは別の人を選択してください。");
+                if (isNaN(hIdx) || isNaN(vIdx) || hIdx === vIdx) throw new Error("HeroとVillainを正しく選択してください。");
 
-                const vPct = updateVillainRangeStats();
+                const vPct = updateStats(villainSelectedHands, 'villain-range-display', 'villain-combos-display');
                 const risk = Math.min(s[hIdx], s[vIdx]);
 
                 const evFold = calculateICM(s, p)[hIdx];
                 const ws = [...s]; ws[hIdx] += risk; ws[vIdx] -= risk; const evWin = calculateICM(ws, p)[hIdx];
                 const ls = [...s]; ls[hIdx] -= risk; ls[vIdx] += risk; const evLose = calculateICM(ls, p)[hIdx];
 
-                const d = evWin - evLose;
-                const pReq = d <= 0 ? 1.0 : (evFold - evLose) / d;
+                const den = evWin - evLose;
+                const pReq = den <= 0 ? 1.0 : (evFold - evLose) / den;
                 
                 elements.reqEquity.innerText = `Req. Equity: ${(pReq * 100).toFixed(1)}%`;
                 elements.heatmapGrid.innerHTML = '';
+                
+                const heroCallHands = new Set();
                 for (let i = 0; i < 13; i++) {
                     for (let j = 0; j < 13; j++) {
                         const r1 = RANKS[i], r2 = RANKS[j], hand = i === j ? r1+r1 : (i < j ? r1+r2+'s' : r2+r1+'o');
-                        const isC = getEquity(hand, vPct) >= pReq;
-                        const cell = document.createElement('div'); cell.className = `hand-cell ${isC ? 'call' : 'fold'}`; cell.innerText = hand;
+                        const eq = getEquity(hand, vPct);
+                        const isC = eq >= pReq;
+                        const cell = document.createElement('div'); 
+                        cell.className = `hand-cell ${isC ? 'call' : 'fold'}`; 
+                        cell.innerText = hand;
                         elements.heatmapGrid.appendChild(cell);
+                        if (isC) heroCallHands.add(hand);
                     }
                 }
+                
                 elements.heatmapSection.classList.remove('hidden');
                 elements.resultsDisplay.classList.add('hidden');
                 elements.heatmapSection.scrollIntoView({ behavior: 'smooth' });
