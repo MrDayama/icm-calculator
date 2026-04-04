@@ -2,134 +2,133 @@ import functools
 import json
 from typing import List, Dict
 
-# --- 1. デッキとハンドの定義 ---
-RANKS = '23456789TJQKA'
+# 169ハンドの定義
+RANKS = 'AKQJT98765432'
 RANK_VALUE = {r: i for i, r in enumerate(RANKS)}
 
 def get_169_hands() -> List[str]:
-    """169種類のハンド（AA, AKs, AKo等）を生成"""
     hands = []
-    # Pairs (Strongest first)
-    for r in reversed(RANKS):
-        hands.append(r + r)
-    # Suited
-    for i in range(len(RANKS) - 1, 0, -1):
-        for j in range(i - 1, -1, -1):
+    for r in RANKS: hands.append(r + r)
+    for i in range(len(RANKS)):
+        for j in range(i + 1, len(RANKS)):
             hands.append(RANKS[i] + RANKS[j] + 's')
-    # Offsuit
-    for i in range(len(RANKS) - 1, 0, -1):
-        for j in range(i - 1, -1, -1):
+    for i in range(len(RANKS)):
+        for j in range(i + 1, len(RANKS)):
             hands.append(RANKS[i] + RANKS[j] + 'o')
     return hands
 
-# --- 2. ICM計算エンジン ---
-def calculate_icm(stacks: List[float], payouts: List[float]) -> List[float]:
+# --- 【重大修正】真のICM計算エンジン（賞金EV算出） ---
+def calculate_icm_prize_ev(stacks: List[float], payouts: List[float], bb_size: float = 100.0) -> List[float]:
+    """
+    stacks: チップ枚数 / payouts: 賞金リスト
+    内部でBB正規化を行い、順位確率から「賞金期待値（Prize EV）」を算出する。
+    """
     n = len(stacks)
     m = len(payouts)
+    
+    # 【追加: BB正規化】
+    norm_stacks = [float(s) / bb_size for s in stacks]
     full_payouts = [float(p) for p in payouts] + [0.0] * (max(0, n - m))
     
     @functools.lru_cache(maxsize=None)
-    def compute_evs(player_indices: frozenset, payout_idx: int) -> Dict[int, float]:
+    def compute_placement_prize_evs(player_indices: frozenset, payout_idx: int) -> Dict[int, float]:
         num_players = len(player_indices)
         if num_players == 0 or payout_idx >= n:
             return {idx: 0.0 for idx in player_indices}
+        
         if num_players == 1:
             idx = next(iter(player_indices))
             return {idx: sum(full_payouts[payout_idx:])}
-        
-        subset_total = sum(stacks[idx] for idx in player_indices)
+            
+        subset_total = sum(norm_stacks[idx] for idx in player_indices)
         evs = {idx: 0.0 for idx in player_indices}
-        if subset_total == 0:
+        
+        if subset_total <= 0:
             share = sum(full_payouts[payout_idx:]) / num_players
             return {idx: share for idx in player_indices}
             
-        current_prize = full_payouts[payout_idx]
+        # 現在の順位の賞金額
+        current_prize_value = full_payouts[payout_idx]
+        
         for p in player_indices:
-            prob = stacks[p] / subset_total
-            remaining = player_indices - {p}
-            sub_res = compute_evs(remaining, payout_idx + 1)
-            evs[p] += prob * current_prize
-            for q, ev_q in sub_res.items():
-                evs[q] += prob * ev_q
+            # プレイヤーpがこの順位を獲得する確率（スタック比率）
+            prob_p_is_next = norm_stacks[p] / subset_total
+            
+            # 再帰的に後続の順位EVを計算
+            remaining_indices = player_indices - {p}
+            sub_results = compute_placement_prize_evs(remaining_indices, payout_idx + 1)
+            
+            # p自身のこの順位の賞金期待値を加算
+            evs[p] += prob_p_is_next * current_prize_value
+            # 他のプレイヤーがこの順位をとった場合の期待値を合算
+            for q, ev_q in sub_results.items():
+                evs[q] += prob_p_is_next * ev_q
+                
         return evs
 
-    res = compute_evs(frozenset(range(n)), 0)
-    return [res[i] for i in range(n)]
+    indices = frozenset(range(n))
+    result_dict = compute_placement_prize_evs(indices, 0)
+    return [result_dict[i] for i in range(n)]
 
-# --- 3. 勝率ロジック (vs Range) ---
-def get_equity_vs_range(hand: str, villain_range_pct: float) -> float:
-    """
-    ハンドの、相手のプッシュレンジ(上位X%)に対する概算勝率を計算。
-    (ポーカーエンジニアとしての経験に基づく近似モデル)
-    """
+# 対レンジ勝率（概算モデル）
+def get_equity_vs_range(hand: str, v_range_pct: float) -> float:
     r1, r2 = hand[0], hand[1]
-    v1, v2 = RANK_VALUE[r1], RANK_VALUE[r2]
-    is_pair = (r1 == r2)
+    v1, v2 = RANKS.find(r1), RANKS.find(r2)
+    is_pair = r1 == r2
     is_suited = hand.endswith('s')
     
-    # Base Power (Relative to random)
-    if is_pair:
-        power = 0.5 + (v1 / 12.0) * 0.35 # 22: ~50%, AA: ~85%
-    else:
-        # High card weight
-        power = 0.3 + (v1 / 12.0) * 0.2 + (v2 / 12.0) * 0.1
-        if is_suited: power += 0.04
-        
-    # Range Adjustment
-    # Villainのレンジが狭い（タイト）ほど、Heroの勝率は低くなる
-    # 30%レンジに対して、ランダムレンジ比で約5-10%以上勝率が低下する
-    tightness = 1.0 - villain_range_pct
-    equity = power - (tightness * 0.22)
-    
-    return max(0.1, min(0.9, equity))
+    base = 0.50 + (12 - v1) * 0.03 if is_pair else 0.30 + (12 - v1) * 0.02 + (12 - v2) * 0.015
+    if is_suited: base += 0.04
+    tightness = 1.0 - v_range_pct
+    return max(0.05, min(0.95, base - (tightness * 0.2)))
 
-# --- 4. メイン分析関数 ---
-def analyze_call_range(stacks: List[int], payouts: List[int], hero_idx: int, villain_idx: int, villain_range_pct: float):
-    # 1. Fold EV
-    ev_fold = calculate_icm([float(s) for s in stacks], payouts)[hero_idx]
+# --- 【重大修正】ICM賞金EVに基づいた分析 ---
+def analyze_call_range_icm(stacks: List[int], payouts: List[int], hero_idx: int, villain_idx: int, villain_range_pct: float):
+    # 1. Fold Prize EV
+    ev_fold = calculate_icm_prize_ev(stacks, payouts)[hero_idx]
     
-    # 2. Win EV
-    win_amount = min(stacks[hero_idx], stacks[villain_idx])
+    risk_stack = min(stacks[hero_idx], stacks[villain_idx])
+    
+    # 2. Win Prize EV
     win_stacks = list(stacks)
-    win_stacks[hero_idx] += win_amount
-    win_stacks[villain_idx] -= win_amount
-    ev_win = calculate_icm([float(s) for s in win_stacks], payouts)[hero_idx]
+    win_stacks[hero_idx] += risk_stack
+    win_stacks[villain_idx] -= risk_stack
+    ev_win = calculate_icm_prize_ev(win_stacks, payouts)[hero_idx]
     
-    # 3. Lose EV
+    # 3. Lose Prize EV
     lose_stacks = list(stacks)
-    lose_stacks[hero_idx] -= win_amount
-    lose_stacks[villain_idx] += win_amount
-    ev_lose = calculate_icm([float(s) for s in lose_stacks], payouts)[hero_idx]
+    lose_stacks[hero_idx] -= risk_stack
+    lose_stacks[villain_idx] += risk_stack
+    ev_lose = calculate_icm_prize_ev(lose_stacks, payouts)[hero_idx]
     
-    # Required Equity
+    # 【修正】賞金期待値による必要勝率算出
     denom = (ev_win - ev_lose)
-    p_req = (ev_fold - ev_lose) / denom if denom != 0 else 1.0
+    p_req = (ev_fold - ev_lose) / denom if denom > 0 else 1.0
     
-    # Range Selection
     all_hands = get_169_hands()
     call_range = [h for h in all_hands if get_equity_vs_range(h, villain_range_pct) >= p_req]
     
     return {
-        "required_equity": p_req,
+        "required_equity": round(p_req, 3),
         "call_range": call_range,
-        "evs": {"fold": ev_fold, "win": ev_win, "lose": ev_lose}
+        "ev_data": {"fold": ev_fold, "win": ev_win, "lose": ev_lose}
     }
 
 def draw_heatmap(call_range: List[str]):
-    print("\n   " + " ".join(RANKS[::-1]))
-    for i, r1 in enumerate(RANKS[::-1]):
+    print("\n   " + " ".join(list(RANKS)))
+    for i, r1 in enumerate(RANKS):
         row = f"{r1} "
-        for j, r2 in enumerate(RANKS[::-1]):
-            if i == j: hand = r1 + r1
-            elif i < j: hand = r1 + r2 + 's'
-            else: hand = r2 + r1 + 'o'
-            row += " X" if hand in call_range else " ."
+        for j, r2 in enumerate(RANKS):
+            if i == j: h = r1 + r1
+            elif i < j: h = r1 + r2 + 's'
+            else: h = r2 + r1 + 'o'
+            row += " ■" if h in call_range else " ."
         print(row)
 
 if __name__ == "__main__":
-    # サンプル実行
+    # テストケース
     s = [10000, 8000, 5000, 3000, 2000]
     p = [50, 30, 20]
-    res = analyze_call_range(s, p, 2, 4, 0.3)
-    print(f"Required Equity: {res['required_equity']*100:.1f}%")
+    res = analyze_call_range_icm(s, p, 2, 4, 0.3)
+    print(f"Required Equity (ICM EV Base): {res['required_equity'] * 100}%")
     draw_heatmap(res['call_range'])
