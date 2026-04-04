@@ -1,5 +1,5 @@
 /** 
- * ICM Calculator & Range Analyzer (Corrected Prize EV Edition v1.0.4)
+ * ICM Calculator & Range Analyzer (Corrected Prize EV Edition v1.0.5)
  */
 
 const RANKS = 'AKQJT98765432';
@@ -31,7 +31,7 @@ function calculateICM(stacks, payouts) {
     const actualPayouts = payouts.slice(0, n);
     const fullPayouts = [...actualPayouts, ...new Array(Math.max(0, n - actualPayouts.length)).fill(0)];
     
-    // 【修正】BB正規化 (BB=100として正規化)
+    // 【修正】BB正規化 (BB数としての入力を前提とし、計算の安定化のために内部で小規模化)
     const normalizedStacks = stacks.map(s => s / 100.0);
     const cache = new Map();
 
@@ -68,15 +68,10 @@ function calculateICM(stacks, payouts) {
 
         const currentPrizeValue = fullPayouts[payoutIdx] || 0;
         playerIndices.forEach(p => {
-            // チップ比率からこの順位を獲得する確率を算出
             const probWinsThisPlace = (normalizedStacks[p] || 0) / subsetTotal;
             const remainingPlayers = playerIndices.filter(i => i !== p);
             const subRes = computePrizeEVs(remainingPlayers, payoutIdx + 1);
-            
-            // プレイヤーp自身の現在の順位賞金EVを加算
             currentEVs[p] += probWinsThisPlace * currentPrizeValue;
-            
-            // pがこの順位を確定させた場合の、他プレイヤーの事後的EVを合算
             for (const q in subRes) {
                 currentEVs[q] += probWinsThisPlace * subRes[q];
             }
@@ -153,12 +148,12 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.modeIcm.onclick = () => { mode = 'icm'; elements.modeIcm.classList.add('active'); elements.modeRange.classList.remove('active'); updateMode(); };
     elements.modeRange.onclick = () => { mode = 'range'; elements.modeRange.classList.add('active'); elements.modeIcm.classList.remove('active'); updateMode(); };
 
-    function createRow(list, isPlayer = false, val = "") {
+    function createRow(list, isPlayer = false, val = "", stackVal = "") {
         const div = document.createElement('div');
         div.className = 'input-row';
         if (isPlayer) {
             div.style.gridTemplateColumns = '1fr 100px 40px';
-            div.innerHTML = `<input type="text" class="player-name" value="${val || ''}" placeholder="Name"><input type="number" class="player-stack" placeholder="Stack" step="any"><button class="btn-remove">×</button>`;
+            div.innerHTML = `<input type="text" class="player-name" value="${val || ''}" placeholder="Name"><input type="number" class="player-stack" value="${stackVal || ''}" placeholder="Stack (BB)" step="any"><button class="btn-remove">×</button>`;
             div.querySelector('.player-name').oninput = updateSelectionPool;
         } else {
             div.innerHTML = `<label>賞金</label><input type="number" class="payout-input" value="${val || ''}" placeholder="Value" step="any"><button class="btn-remove">×</button>`;
@@ -190,13 +185,10 @@ document.addEventListener('DOMContentLoaded', () => {
         updateVillainRangeStats();
     }
 
+    // Load defaults (Typical tournament BB scenarios)
     [50, 30, 20].forEach(v => createRow(elements.payoutList, false, v));
-    [10000, 8000, 5000, 3000, 2000].forEach((s, idx) => {
-        const div = document.createElement('div'); div.className = 'input-row'; div.style.gridTemplateColumns = '1fr 100px 40px';
-        div.innerHTML = `<input type="text" class="player-name" value="Player ${idx+1}"><input type="number" class="player-stack" value="${s}"><button class="btn-remove">×</button>`;
-        div.querySelector('.player-name').oninput = updateSelectionPool;
-        div.querySelector('.btn-remove').onclick = () => { div.remove(); updateSelectionPool(); };
-        elements.playerList.appendChild(div);
+    [100, 80, 50, 30, 20].forEach((s, idx) => {
+        createRow(elements.playerList, true, `Player ${idx+1}`, s);
     });
 
     initVillainBoard();
@@ -217,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     elements.resultsDisplay.querySelector('.result-cards').appendChild(c);
                 });
                 elements.resultsDisplay.classList.remove('hidden');
-                elements.heatmapSection.classList.add('hidden');
+                heatmapSection.classList.add('hidden');
             } else {
                 const hIdx = parseInt(elements.heroSelect.value), vIdx = parseInt(elements.villainSelect.value);
                 if (hIdx === vIdx) return alert("別のプレイヤーを選んでください");
@@ -225,18 +217,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const vPct = updateVillainRangeStats();
                 const effectiveStack = Math.min(s[hIdx], s[vIdx]);
 
-                // 1. Fold Scenario (Prize EV)
                 const evFold = calculateICM(s, p)[hIdx];
-                
-                // 2. Win Scenario (Prize EV)
                 const ws = [...s]; ws[hIdx] += effectiveStack; ws[vIdx] -= effectiveStack;
                 const evWin = calculateICM(ws, p)[hIdx];
-                
-                // 3. Lose Scenario (Prize EV)
                 const ls = [...s]; ls[hIdx] -= effectiveStack; ls[vIdx] += effectiveStack;
                 const evLose = calculateICM(ls, p)[hIdx];
 
-                // 【修正】賞金期待値の差分から正しく必要勝率(ICM Equity)を計算
                 const den = (evWin - evLose);
                 const pReq = den <= 0 ? 1.0 : (evFold - evLose) / den;
                 
@@ -251,9 +237,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         elements.heatmapGrid.appendChild(cell);
                     }
                 }
-                elements.heatmapSection.classList.remove('hidden');
-                elements.resultsDisplay.classList.add('hidden');
-                elements.heatmapSection.scrollIntoView({ behavior: 'smooth' });
+                heatmapSection.classList.remove('hidden');
+                resultsDisplay.classList.add('hidden');
+                heatmapSection.scrollIntoView({ behavior: 'smooth' });
             }
         } catch (err) { alert("エラーが発生しました。"); console.error(err); }
     };
