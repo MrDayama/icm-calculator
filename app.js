@@ -1,11 +1,10 @@
 /** 
- * ICM Calculator & Range Analyzer (High Precision v1.0.7)
+ * ICM Calculator & Range Analyzer (Verification Mode v1.0.8)
  */
 
 const RANKS = 'AKQJT98765432';
 let villainSelectedHands = new Set();
 
-// --- ユーティリティ ---
 function getCombos(hand) {
     if (hand.length === 2) return 6;
     if (hand.endsWith('s')) return 4;
@@ -23,12 +22,14 @@ function updateStats(handsSet, displayId, comboId) {
     return parseFloat(pct);
 }
 
-// --- ICM計算エンジン ---
+// --- ICM Engine ---
 function calculateICM(stacks, payouts) {
     const n = stacks.length;
     if (n === 0) return [];
     const actualPayouts = payouts.slice(0, n);
     const fullPayouts = [...actualPayouts, ...new Array(Math.max(0, n - actualPayouts.length)).fill(0)];
+    
+    // BB正規化 (内部処理用)
     const normStacks = stacks.map(s => Math.max(0.1, parseFloat(s) || 0) / 10.0);
     const cache = new Map();
 
@@ -77,25 +78,22 @@ function calculateICM(stacks, payouts) {
     return allIndices.map(i => resultDict[i] || 0);
 }
 
-// --- 高精度勝率モデル (v1.0.7) ---
+// --- Equity Model v1.0.8 ---
 function getEquity(hand, vRangePct) {
     const r1 = hand[0], r2 = hand[1];
     const v1 = RANKS.indexOf(r1), v2 = RANKS.indexOf(r2);
     const isPair = r1 === r2, isSuited = hand.endsWith('s');
     
-    // ベース勝率テーブルの改良
     let power;
     if (isPair) {
-        power = 0.8 + ((12 - v1) / 12) * 0.15; // AA=0.95, 22=0.8
+        power = 0.8 + ((12 - v1) / 12) * 0.16; // AA=0.96, 22=0.8
     } else {
-        // ハイカード重視
-        power = 0.45 + ((12 - v1) / 12) * 0.2 + ((12 - v2) / 12) * 0.1;
-        if (isSuited) power += 0.05;
+        power = 0.45 + ((12 - v1) / 12) * 0.22 + ((12 - v2) / 12) * 0.12;
+        if (isSuited) power += 0.06;
     }
 
     const vTightness = 1.0 - (vRangePct / 100);
-    // 相手がタイトなほど勝率は大幅に下がる
-    return Math.max(0.1, Math.min(0.95, power - (vTightness * 0.25)));
+    return Math.max(0.05, Math.min(0.95, power - (vTightness * 0.28)));
 }
 
 // --- UI制御 ---
@@ -117,7 +115,8 @@ document.addEventListener('DOMContentLoaded', () => {
         modeIcm: document.getElementById('mode-icm'),
         modeRange: document.getElementById('mode-range'),
         reqEquity: document.getElementById('req-equity-display'),
-        totalPayoutDisp: document.getElementById('total-payout-display')
+        totalPayoutDisp: document.getElementById('total-payout-display'),
+        calcSummary: document.getElementById('calculation-summary-area')
     };
 
     function updateSelectionPool() {
@@ -179,20 +178,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     else { villainSelectedHands.add(h); cell.classList.add('selected'); }
                     updateStats(villainSelectedHands, 'villain-range-display', 'villain-combos-display');
                 };
-                if (['AA','KK','QQ','JJ','TT','99','AKs','AQs','AJs','KQs','AKo','AQo'].includes(h)) { villainSelectedHands.add(h); cell.classList.add('selected'); }
+                if (['AA','KK','QQ','JJ','TT','AKs','AQs','AKo'].includes(h)) { villainSelectedHands.add(h); cell.classList.add('selected'); }
                 elements.vGrid.appendChild(cell);
             }
         }
         updateStats(villainSelectedHands, 'villain-range-display', 'villain-combos-display');
     }
 
-    // セットアップ
     [50, 30, 20].forEach(v => createRow(elements.payoutList, 'payout', v));
     [100, 80, 50, 30, 20].forEach((s, idx) => createRow(elements.playerList, 'player', `Player ${idx+1}`, s));
     initVillainBoard();
     updateSelectionPool();
 
-    // --- 計算メインルーチン ---
     elements.calcBtn.onclick = () => {
         try {
             const p = Array.from(document.querySelectorAll('.payout-input')).map(i => parseFloat(i.value) || 0);
@@ -216,22 +213,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.heatmapSection.classList.add('hidden');
             } else {
                 const hIdx = parseInt(elements.heroSelect.value), vIdx = parseInt(elements.villainSelect.value);
-                if (isNaN(hIdx) || isNaN(vIdx) || hIdx === vIdx) throw new Error("HeroとVillainを正しく選択してください。");
+                if (isNaN(hIdx) || isNaN(vIdx) || hIdx === vIdx) throw new Error("HeroとVillainを選択してください。");
 
                 const vPct = updateStats(villainSelectedHands, 'villain-range-display', 'villain-combos-display');
                 const risk = Math.min(s[hIdx], s[vIdx]);
 
+                // ICMシナリオ計算
                 const evFold = calculateICM(s, p)[hIdx];
                 const ws = [...s]; ws[hIdx] += risk; ws[vIdx] -= risk; const evWin = calculateICM(ws, p)[hIdx];
                 const ls = [...s]; ls[hIdx] -= risk; ls[vIdx] += risk; const evLose = calculateICM(ls, p)[hIdx];
 
+                // 必要勝率導出
                 const den = evWin - evLose;
                 const pReq = den <= 0 ? 1.0 : (evFold - evLose) / den;
                 
+                // 計算プロセスの表示
+                elements.calcSummary.innerHTML = `
+                    <div class="calc-card"><span class="calc-val">${evFold.toFixed(2)}</span><span class="calc-label">Fold EV</span></div>
+                    <div class="calc-card"><span class="calc-val">${evWin.toFixed(2)}</span><span class="calc-label">Win EV</span></div>
+                    <div class="calc-card"><span class="calc-val">${evLose.toFixed(2)}</span><span class="calc-label">Lose EV</span></div>
+                    <div class="calc-card"><span class="calc-val">${(pReq*100).toFixed(1)}%</span><span class="calc-label">Req. Eq</span></div>
+                `;
+
                 elements.reqEquity.innerText = `Req. Equity: ${(pReq * 100).toFixed(1)}%`;
                 elements.heatmapGrid.innerHTML = '';
                 
-                const heroCallHands = new Set();
                 for (let i = 0; i < 13; i++) {
                     for (let j = 0; j < 13; j++) {
                         const r1 = RANKS[i], r2 = RANKS[j], hand = i === j ? r1+r1 : (i < j ? r1+r2+'s' : r2+r1+'o');
@@ -239,9 +245,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const isC = eq >= pReq;
                         const cell = document.createElement('div'); 
                         cell.className = `hand-cell ${isC ? 'call' : 'fold'}`; 
-                        cell.innerText = hand;
+                        cell.innerHTML = `<span>${hand}</span><span class="eq-val">${(eq*100).toFixed(0)}%</span>`;
                         elements.heatmapGrid.appendChild(cell);
-                        if (isC) heroCallHands.add(hand);
                     }
                 }
                 
