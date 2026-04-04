@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ICM Calculator - Poker Pro</title>
+    <title>ICM Calculator - Poker Pro v1.0.4</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=1.0.2">
-    <link rel="manifest" href="manifest.json?v=1.0.2">
+    <link rel="stylesheet" href="style.css?v=1.0.4">
+    <link rel="manifest" href="manifest.json?v=1.0.4">
 </head>
 <body>
     <div class="app-container">
         <header>
             <h1>ICM Calculator</h1>
-            <div class="status-badge">Professional Edition</div>
+            <div class="status-badge">v1.0.4 - Prize EV Mode</div>
         </header>
 
         <main>
@@ -22,7 +22,6 @@
             </div>
 
             <section class="card-section" id="payouts-section">
-                <!-- Payouts section remains same -->
                 <div class="section-header">
                     <h2><span class="icon">🏆</span> 賞金構造 (Payouts)</h2>
                     <button id="add-payout" class="btn-icon">+</button>
@@ -84,11 +83,8 @@
             </section>
 
             <section class="results-section hidden" id="results-display">
-                <!-- EV Results section -->
-                <h2>計算結果 (EV)</h2>
-                <div id="result-list" class="result-cards">
-                    <!-- Results will be injected here -->
-                </div>
+                <h2>計算結果 (Prize EV)</h2>
+                <div id="result-list" class="result-cards"></div>
                 <div class="total-prize-pool">
                     合計賞金: <span id="total-payout-display">0</span>
                 </div>
@@ -96,9 +92,9 @@
         </main>
 
         <footer>
-            <p>© 2026 Poker ICM Pro Tools</p>
+            <p>© 2026 Poker ICM Pro Tools - Theory Corrected Edition</p>
         </footer>
     </div>
-    <script src="app.js?v=1.0.2"></script>
+    <script src="app.js?v=1.0.4"></script>
 </body>
 </html>
