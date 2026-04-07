@@ -293,7 +293,7 @@ input:focus {
     display: grid;
     grid-template-columns: repeat(13, 1fr);
     gap: 1px;
-    min-width: 320px; /* Avoid collapsing icons too much */
+    min-width: 360px; /* Avoid collapsing icons too much */
 }
 
 .calculation-summary {
@@ -409,7 +409,7 @@ input:focus {
 }
 
 @media (max-width: 480px) {
-    .hand-cell { font-size: 0.4rem; transform: scale(1); }
+    .hand-cell { font-size: 0.45rem; transform: scale(1); }
     h1 { font-size: 1.8rem; }
-    .card-section { padding: 1rem; border-radius: 16px; }
+    .card-section { padding: 1rem; border-radius: 8px; }
 }
