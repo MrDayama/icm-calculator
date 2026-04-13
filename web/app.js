@@ -78,7 +78,7 @@ function calculateICM(stacks, payouts) {
     return allIndices.map(i => resultDict[i] || 0);
 }
 
-// --- Equity Model v1.1.0 (Blocker Aware) ---
+// --- Equity Model v1.2.0 (Blocker Aware - Mobile Optimized) ---
 function getEquity(hand, vRangeSet, heroHand = null) {
     const r1 = hand[0], r2 = hand[1];
     const v1 = RANKS.indexOf(r1), v2 = RANKS.indexOf(r2);
