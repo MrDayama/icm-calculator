@@ -78,6 +78,31 @@ function calculateICM(stacks, payouts) {
     return allIndices.map(i => resultDict[i] || 0);
 }
 
+function calculateBF(stacks, payouts, heroIdx, villainIdx) {
+    if (heroIdx === villainIdx) return 1.0;
+    
+    // 現在のEV
+    const evsNow = calculateICM(stacks, payouts);
+    const evNow = evsNow[heroIdx];
+    
+    // リスク（小さい方のスタック）
+    const risk = Math.min(stacks[heroIdx], stacks[villainIdx]);
+    
+    // Win scenario
+    const ws = [...stacks]; ws[heroIdx] += risk; ws[villainIdx] -= risk;
+    const evWin = calculateICM(ws, payouts)[heroIdx];
+    
+    // Lose scenario
+    const ls = [...stacks]; ls[heroIdx] -= risk; ls[villainIdx] += risk;
+    const evLose = calculateICM(ls, payouts)[heroIdx];
+    
+    const num = evNow - evLose;
+    const den = evWin - evNow;
+    
+    if (den <= 0) return 99.0;
+    return num / den;
+}
+
 // --- Equity Model v1.0.8 ---
 function getEquity(hand, vRangePct) {
     const r1 = hand[0], r2 = hand[1];
@@ -203,8 +228,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.resultCards.innerHTML = '';
                 let total = 0;
                 results.forEach((ev, i) => {
+                    // 各プレイヤーの対戦相手ごとのBFを計算
+                    let bfs = [];
+                    s.forEach((stackJ, j) => {
+                        if (i !== j && s[i] > 0 && s[j] > 0) {
+                            const bf = calculateBF(s, p, i, j);
+                            const re = (bf / (1 + bf)) * 100;
+                            bfs.push({ name: names[j], val: bf.toFixed(2), re: re.toFixed(1) });
+                        }
+                    });
+
+                    const avgBf = bfs.length > 0 ? (bfs.reduce((sum, b) => sum + parseFloat(b.val), 0) / bfs.length).toFixed(2) : "1.00";
+                    
                     const c = document.createElement('div'); c.className = 'res-card';
-                    c.innerHTML = `<div><div class="res-player">${names[i]}</div></div><div class="res-ev">${ev.toFixed(2)}</div>`;
+                    c.innerHTML = `
+                        <div class="res-card-main">
+                            <div class="res-player">${names[i]} <span class="avg-bf-tag">Avg BF: ${avgBf}</span></div>
+                            <div class="res-ev">${ev.toFixed(2)}</div>
+                        </div>
+                        <div class="res-bf-details">
+                            ${bfs.map(b => `<div class="bf-row">vs ${b.name}: <strong>${b.val}</strong> <span class="bf-re">(RE: ${b.re}%)</span></div>`).join('')}
+                        </div>
+                    `;
                     elements.resultCards.appendChild(c);
                     total += ev;
                 });

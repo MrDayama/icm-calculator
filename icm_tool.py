@@ -87,6 +87,42 @@ def calculate_icm(stacks: List[float], payouts: List[float]) -> List[float]:
     # Return as list in the original order
     return [result_dict[i] for i in range(n)]
 
+def compute_bubble_factor(stacks: List[float], payouts: List[float], hero_index: int, villain_index: int) -> float:
+    """
+    Calculate the Bubble Factor (BF) for Hero vs Villain.
+    BF = (EV_now - EV_lose) / (EV_win - EV_now)
+    """
+    if hero_index == villain_index:
+        return 1.0
+    
+    # Current EV
+    ev_results_now = calculate_icm(stacks, payouts)
+    ev_now = ev_results_now[hero_index]
+    
+    # Total risk is the smaller stack
+    risk = min(stacks[hero_index], stacks[villain_index])
+    
+    # Win scenario: Hero wins the risk amount from Villain
+    new_stacks_win = list(stacks)
+    new_stacks_win[hero_index] += risk
+    new_stacks_win[villain_index] -= risk
+    ev_win = calculate_icm(new_stacks_win, payouts)[hero_index]
+    
+    # Lose scenario: Hero loses the risk amount to Villain
+    new_stacks_lose = list(stacks)
+    new_stacks_lose[hero_index] -= risk
+    new_stacks_lose[villain_index] += risk
+    ev_lose = calculate_icm(new_stacks_lose, payouts)[hero_index]
+    
+    # BF Calculation
+    numerator = ev_now - ev_lose
+    denominator = ev_win - ev_now
+    
+    if denominator <= 0:
+        return 99.0  # Represents near-infinite risk premium (e.g., when winning doesn't improve rank but losing busts)
+        
+    return numerator / denominator
+
 def main():
     """CLI wrapper for ICM calculator"""
     import argparse
@@ -133,17 +169,36 @@ def main():
     
     if args.format:
         print("\n=== ICM Calculation Results ===")
-        print(f"{'Player':<10} | {'Stack':<12} | {'EV':<12}")
-        print("-" * 40)
-        for i, (s, ev) in enumerate(zip(stacks, evs)):
-            print(f"Player {i+1:<3} | {s:<12.2f} | {ev:<12.4f}")
+        print(f"{'Player':<10} | {'Stack':<12} | {'EV':<12} | {'Avg BF':<8}")
+        print("-" * 60)
+        
+        # Calculate BFs for all pairs to compute Average BF
+        all_bfs = []
+        for i in range(len(stacks)):
+            player_bfs = []
+            for j in range(len(stacks)):
+                if i != j and stacks[i] > 0 and stacks[j] > 0:
+                    bf = compute_bubble_factor(stacks, payouts, i, j)
+                    player_bfs.append(bf)
+            avg_bf = sum(player_bfs) / len(player_bfs) if player_bfs else 1.0
+            all_bfs.append(avg_bf)
+
+        for i, (s, ev, abf) in enumerate(zip(stacks, evs, all_bfs)):
+            re_pct = (abf / (1 + abf)) * 100
+            print(f"Player {i+1:<3} | {s:<12.2f} | {ev:<12.4f} | {abf:<8.2f} (RE: {re_pct:.1f}%)")
+        
         total_ev = sum(evs)
         total_payout = sum(payouts)
-        print("-" * 40)
+        print("-" * 60)
         print(f"{'Total':<10} | {'':<12} | {total_ev:<12.4f}")
         print(f"Prize Pool: {total_payout:.4f}")
     else:
-        print(json.dumps(evs))
+        # Include BFs in JSON output if possible, otherwise keep original
+        result = {
+            "evs": evs,
+            "avg_bfs": [sum([compute_bubble_factor(stacks, payouts, i, j) for j in range(len(stacks)) if i != j]) / (len(stacks)-1) for i in range(len(stacks))]
+        }
+        print(json.dumps(result))
 
 if __name__ == "__main__":
     main()

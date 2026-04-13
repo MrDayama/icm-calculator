@@ -196,19 +196,57 @@ input:focus {
     border-radius: 8px;
     padding: 1.2rem;
     display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.res-card-main {
+    width: 100%;
+    display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .res-player {
     font-size: 1.1rem;
-    font-weight: 400;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+}
+
+.avg-bf-tag {
+    font-size: 0.7rem;
+    background: #e9ecef;
+    color: var(--text-dim);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 10px;
+    font-weight: 600;
 }
 
 .res-ev {
     font-size: 1.3rem;
+    font-weight: 700;
+    color: #198754; 
+}
+
+.res-bf-details {
+    width: 100%;
+    border-top: 1px dashed var(--border);
+    padding-top: 8px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 6px;
+}
+
+.bf-row {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+}
+
+.bf-re {
+    color: var(--danger);
     font-weight: 600;
-    color: #4ade80; /* Success green */
 }
 
 .res-meta {
