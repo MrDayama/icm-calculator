@@ -196,23 +196,60 @@ input:focus {
 }
 
 .res-card {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 15px;
-    border-radius: 12px;
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-left: 4px solid var(--primary);
+    animation: slideIn 0.3s ease;
+}
+
+.res-card-main {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-left: 4px solid var(--accent);
 }
 
 .res-player {
+    font-size: 1.1rem;
     font-weight: 600;
+}
+
+.avg-bf-tag {
+    font-size: 0.7rem;
+    background: rgba(99, 102, 241, 0.2);
+    color: var(--primary);
+    padding: 2px 8px;
+    border-radius: 100px;
+    margin-left: 8px;
+    vertical-align: middle;
 }
 
 .res-risk {
     font-size: 0.75rem;
-    color: #ffb74d; /* Risk orange */
+    color: #ffb74d;
     margin-top: 4px;
+}
+
+.res-bf-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bf-row {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+}
+
+.bf-re {
+    font-size: 0.7rem;
+    opacity: 0.6;
 }
 
 .hand-cell.hero-target {
