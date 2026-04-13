@@ -1,6 +1,9 @@
 import functools
 import json
-from typing import List, Dict
+import math
+from typing import List, Dict, Optional
+from icm_tool import calculate_icm, compute_bubble_factor
+from equity_engine import Range, Card, compute_win_rate_fast
 
 # 169ハンドの定義
 RANKS = 'AKQJT98765432'
@@ -125,10 +128,82 @@ def draw_heatmap(call_range: List[str]):
             row += " ■" if h in call_range else " ."
         print(row)
 
+# --- ⑤ 次BBリスクスコア (Risk Score) ---
+def calculate_risk_score(stack: float, blinds_total: float, orbit_left: int) -> float:
+    """
+    risk_score = orbit_left / stack_ratio
+    stack_ratio = stack / blinds_total
+    """
+    stack_ratio = stack / blinds_total if blinds_total > 0 else 1.0
+    if stack_ratio <= 0: return 999.0
+    return orbit_left / stack_ratio
+
+# --- ④ ハンド単位評価モード ---
+def evaluate_specific_hand(
+    hand_str: str, 
+    stacks: List[float], 
+    payouts: List[float], 
+    hero_idx: int, 
+    villain_idx: int,
+    villain_push_range: Dict[str, float],
+    blinds_total: float,
+    orbit_left: int
+) -> Dict:
+    """特定ハンド（例: 'AhKd'）の各種指標を計算"""
+    # Blocker考慮のためのRangeオブジェクト
+    v_range = Range(villain_push_range)
+    
+    # 既存の ICM 賞金 EV メソッドを利用
+    fold_ev = calculate_icm_prize_ev(stacks, payouts)[hero_idx]
+    
+    risk_stack = min(stacks[hero_idx], stacks[villain_idx])
+    
+    # Win/Lose Stacks
+    win_s = list(stacks); win_s[hero_idx] += risk_stack; win_s[villain_idx] -= risk_stack
+    lose_s = list(stacks); lose_s[hero_idx] -= risk_stack; lose_s[villain_idx] += risk_stack
+    
+    win_ev = calculate_icm_prize_ev(win_s, payouts)[hero_idx]
+    lose_ev = calculate_icm_prize_ev(lose_s, payouts)[hero_idx]
+    
+    # Win Rate (Range vs Specific Hand with Blockers)
+    # Note: hand_str 'AhKd' -> 'AsKs' logic or mapping needed. For now assume formatted 'AhKd'
+    eq = compute_win_rate_fast(hand_str, v_range)
+    
+    push_ev = eq * win_ev + (1 - eq) * lose_ev
+    bf = compute_bubble_factor(stacks, payouts, hero_idx, villain_idx)
+    
+    risk_score = calculate_risk_score(stacks[hero_idx], blinds_total, orbit_left)
+    
+    return {
+        "hand": hand_str,
+        "push_ev": round(push_ev, 4),
+        "fold_ev": round(fold_ev, 4),
+        "diff": round(push_ev - fold_ev, 4),
+        "bubble_factor": round(bf, 2),
+        "required_equity": round((fold_ev - lose_ev) / (win_ev - lose_ev), 3),
+        "current_equity": round(eq, 3),
+        "risk_score": round(risk_score, 2)
+    }
+
+# --- ⑥ 可視化 (CLI強化) ---
+def print_rich_analysis(player_id: int, data: Dict):
+    risk_label = "LOW"
+    if data['risk_score'] > 2: risk_label = "MEDIUM"
+    if data['risk_score'] > 5: risk_label = "HIGH"
+    
+    print(f"\nPlayer {player_id}")
+    print(f"  * ICM EV: {data['fold_ev']:.2f}")
+    print(f"  * Push EV: {data['push_ev']:.2f} ({'+' if data['diff'] >= 0 else ''}{data['diff']:.2f})")
+    print(f"  * Risk Score: {data['risk_score']:.2f} ({risk_label})")
+    print(f"  * BF vs Villain: {data['bubble_factor']:.1f} (Required: {data['required_equity']*100:.1f}%)")
+    print(f"  * Current Equity: {data['current_equity']*100:.1f}%")
+
 if __name__ == "__main__":
-    # テストケース
+    # 実行例
     s = [10000, 8000, 5000, 3000, 2000]
     p = [50, 30, 20]
-    res = analyze_call_range_icm(s, p, 2, 4, 0.3)
-    print(f"Required Equity (ICM EV Base): {res['required_equity'] * 100}%")
-    draw_heatmap(res['call_range'])
+    v_range = {"22+": 1.0, "A2s+": 1.0, "KJs+": 1.0} # 簡易表記
+    
+    print("=== 高度機能デモ ===")
+    res = evaluate_specific_hand("AhKd", s, p, 2, 0, v_range, 150, 4)
+    print_rich_analysis(3, res)

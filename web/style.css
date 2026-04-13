@@ -196,18 +196,38 @@ input:focus {
 }
 
 .res-card {
-    background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.2rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-left: 4px solid var(--accent);
 }
 
 .res-player {
-    font-size: 1.1rem;
-    font-weight: 400;
+    font-weight: 600;
+}
+
+.res-risk {
+    font-size: 0.75rem;
+    color: #ffb74d; /* Risk orange */
+    margin-top: 4px;
+}
+
+.hand-cell.hero-target {
+    border: 2px solid #fff;
+    box-shadow: 0 0 10px var(--accent);
+    z-index: 2;
+}
+
+.text-input {
+    width: 100%;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: white;
+    padding: 8px;
+    border-radius: 4px;
 }
 
 .res-ev {

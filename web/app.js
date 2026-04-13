@@ -78,22 +78,34 @@ function calculateICM(stacks, payouts) {
     return allIndices.map(i => resultDict[i] || 0);
 }
 
-// --- Equity Model v1.0.8 ---
-function getEquity(hand, vRangePct) {
+// --- Equity Model v1.1.0 (Blocker Aware) ---
+function getEquity(hand, vRangeSet, heroHand = null) {
     const r1 = hand[0], r2 = hand[1];
     const v1 = RANKS.indexOf(r1), v2 = RANKS.indexOf(r2);
     const isPair = r1 === r2, isSuited = hand.endsWith('s');
     
-    let power;
-    if (isPair) {
-        power = 0.8 + ((12 - v1) / 12) * 0.16; // AA=0.96, 22=0.8
-    } else {
-        power = 0.45 + ((12 - v1) / 12) * 0.22 + ((12 - v2) / 12) * 0.12;
-        if (isSuited) power += 0.06;
+    // 基本性能
+    let power = isPair ? 0.82 + ((12 - v1) / 12) * 0.16 : 0.46 + ((12 - v1) / 12) * 0.22 + ((12 - v2) / 12) * 0.12;
+    if (isSuited) power += 0.05;
+
+    // Blocker効果の簡易実装 (HeroハンドがAxなど強いカードなら相手のレンジをタイト化)
+    let blockerMod = 0;
+    if (heroHand) {
+        const h1 = heroHand[0], h2 = heroHand[2];
+        if (h1 === r1 || h2 === r1) blockerMod += 0.03;
+        if (h1 === r2 || h2 === r2) blockerMod += 0.02;
     }
 
+    const vRangePct = (Array.from(vRangeSet).length / 169) * 100;
     const vTightness = 1.0 - (vRangePct / 100);
-    return Math.max(0.05, Math.min(0.95, power - (vTightness * 0.28)));
+    return Math.max(0.05, Math.min(0.95, power - (vTightness * 0.28) + blockerMod));
+}
+
+function calculateRiskScore(stack, orbitLeft) {
+    const blindTotal = 1.5; // 標準的なBB+SB
+    const stackRatio = stack / blindTotal;
+    if (stackRatio <= 0) return 999;
+    return orbitLeft / stackRatio;
 }
 
 // --- UI制御 ---
@@ -116,7 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
         modeRange: document.getElementById('mode-range'),
         reqEquity: document.getElementById('req-equity-display'),
         totalPayoutDisp: document.getElementById('total-payout-display'),
-        calcSummary: document.getElementById('calculation-summary-area')
+        calcSummary: document.getElementById('calculation-summary-area'),
+        specificHand: document.getElementById('specific-hand-input')
     };
 
     function updateSelectionPool() {
@@ -203,8 +216,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.resultCards.innerHTML = '';
                 let total = 0;
                 results.forEach((ev, i) => {
+                    const risk = calculateRiskScore(s[i], (i + 1)); // 簡易的な残り手数
                     const c = document.createElement('div'); c.className = 'res-card';
-                    c.innerHTML = `<div><div class="res-player">${names[i]}</div></div><div class="res-ev">${ev.toFixed(2)}</div>`;
+                    c.innerHTML = `<div><div class="res-player">${names[i]}</div><div class="res-risk">Risk: ${risk.toFixed(2)}</div></div><div class="res-ev">${ev.toFixed(2)}</div>`;
                     elements.resultCards.appendChild(c);
                     total += ev;
                 });
@@ -239,12 +253,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.heatmapGrid.innerHTML = '';
                 
                 for (let i = 0; i < 13; i++) {
-                    for (let j = 0; j < 13; j++) {
+                    for (let j = 0; i < 13; j++) {
+                        if (j === 13) break;
                         const r1 = RANKS[i], r2 = RANKS[j], hand = i === j ? r1+r1 : (i < j ? r1+r2+'s' : r2+r1+'o');
-                        const eq = getEquity(hand, vPct);
+                        const sHand = elements.specificHand.value;
+                        const eq = getEquity(hand, villainSelectedHands, sHand);
                         const isC = eq >= pReq;
                         const cell = document.createElement('div'); 
-                        cell.className = `hand-cell ${isC ? 'call' : 'fold'}`; 
+                        cell.className = `hand-cell ${isC ? 'call' : 'fold'} ${sHand && hand === sHand.slice(0,2) + (sHand.length > 2 ? sHand.slice(2,3) : '') ? 'hero-target' : ''}`; 
                         cell.innerHTML = `<span>${hand}</span><span class="eq-val">${(eq*100).toFixed(0)}%</span>`;
                         elements.heatmapGrid.appendChild(cell);
                     }
