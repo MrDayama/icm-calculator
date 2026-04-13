@@ -3,102 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ICM Calculator - White v1.7.0</title>
+    <title>ICM Calculator - Pure v1.8.0</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=1.7.0">
-    <link rel="manifest" href="manifest.json?v=1.7.0">
+    <link rel="stylesheet" href="style.css?v=1.8.0">
 </head>
 <body>
     <div class="app-container">
         <header>
             <h1>ICM Calculator</h1>
-            <div class="status-badge">v1.7.0 - Yesterday's Simple Stable</div>
+            <div class="status-badge">v1.8.0 - Pure ICM (Legacy Mode)</div>
         </header>
 
         <main>
-            <div class="mode-switch">
-                <button id="mode-icm" class="btn-tab active">ICM EV</button>
-                <button id="mode-range" class="btn-tab">Range Analyzer</button>
-            </div>
-
-            <section class="card-section" id="payouts-section">
+            <!-- 賞金設定 -->
+            <section class="card-section">
                 <div class="section-header">
-                    <h2><span class="icon">🏆</span> 賞金構造 (Payouts)</h2>
+                    <h2>Payouts (%)</h2>
                     <button id="add-payout" class="btn-icon">+</button>
                 </div>
                 <div id="payout-list" class="input-list"></div>
             </section>
 
-            <section class="card-section" id="players-section">
+            <!-- プレイヤー設定 -->
+            <section class="card-section">
                 <div class="section-header">
-                    <h2><span class="icon">👤</span> プレイヤーとスタック (BB)</h2>
+                    <h2>Stacks (BB)</h2>
                     <button id="add-player" class="btn-icon">+</button>
                 </div>
                 <div id="player-list" class="input-list"></div>
             </section>
 
-            <section class="card-section hidden" id="range-settings-section">
+            <button id="calc-btn" class="btn-primary">計算実行</button>
+
+            <!-- 計算結果表示エリア -->
+            <section id="results-display" class="card-section hidden" style="margin-top: 2rem;">
                 <div class="section-header">
-                    <h2><span class="icon">🎯</span> 分析設定 (vs All-in)</h2>
+                    <h2>Analysis Results</h2>
                 </div>
-                <div class="input-list">
-                    <div class="input-row-range">
-                        <label>Hero (あなた)</label>
-                        <select id="hero-select" class="range-select"></select>
-                    </div>
-                    <div class="input-row-range">
-                        <label>Villain (プッシュ側)</label>
-                        <select id="villain-select" class="range-select"></select>
-                    </div>
-                    <div class="input-row-range">
-                        <label>相手のプッシュレンジ (選択してください)</label>
-                        <div class="villain-heatmap-wrapper">
-                            <div id="villain-heatmap-grid" class="heatmap-grid selection-grid"></div>
-                        </div>
-                        <div class="range-info">
-                            選択されたレンジ: <span id="villain-range-display">0.0%</span>
-                            (<span id="villain-combos-display">0</span> / 1326 combos)
-                        </div>
-                    </div>
-                    <div class="input-row-range">
-                        <label>特定ハンド評価 (例: AhKd)</label>
-                        <input type="text" id="specific-hand-input" placeholder="AhKd" class="text-input">
-                    </div>
-                </div>
-            </section>
-
-            <div class="action-container">
-                <button id="calc-btn" class="btn-primary">計算する (Calculate)</button>
-            </div>
-
-            <section class="results-section hidden" id="heatmap-section">
-                <h2>分析結果 (分析詳細)</h2>
-                <div class="calculation-summary" id="calculation-summary-area">
-                    <!-- Calculation details injected here -->
-                </div>
-                <div class="heatmap-wrapper">
-                    <div id="heatmap-grid" class="heatmap-grid"></div>
-                </div>
-                <div class="heatmap-legend">
-                    <span class="legend-item"><span class="box call"></span> Call</span>
-                    <span class="legend-item"><span class="box fold"></span> Fold</span>
-                    <span id="req-equity-display" class="req-equity">Req. Equity: 0%</span>
-                </div>
-            </section>
-
-            <section class="results-section hidden" id="results-display">
-                <h2>計算結果 (Prize EV)</h2>
-                <div id="result-list" class="result-cards"></div>
-                <div class="total-prize-pool">
-                    合計賞金: <span id="total-payout-display">0</span>
-                </div>
+                <div id="result-list"></div>
             </section>
         </main>
 
         <footer>
-            <p>© 2026 Poker ICM Pro Tools - Theory Corrected Edition</p>
+            <p>© 2026 Poker ICM Tools - Pure Stable Edition</p>
         </footer>
     </div>
-    <script src="app.js?v=1.7.0"></script>
+    <script src="app.js?v=1.8.0"></script>
 </body>
 </html>
