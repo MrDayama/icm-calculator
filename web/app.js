@@ -1,5 +1,6 @@
 /** 
- * ICM Calculator & Range Analyzer (v1.6.1 Legacy Stable + Analysis Details)
+ * ICM Calculator & Range Analyzer (v1.7.0 Simple Stable)
+ * Restoring Yesterday's Best UI & Fix Selection Color
  */
 
 const RANKS = 'AKQJT98765432';
@@ -22,7 +23,7 @@ function updateStats(handsSet, displayId, comboId) {
     return parseFloat(pct);
 }
 
-// --- ICM Engine ---
+// --- ICM Engine (Yesterday's Stable Version) ---
 function calculateICM(stacks, payouts) {
     const n = stacks.length;
     if (n === 0) return [];
@@ -54,7 +55,7 @@ function calculateICM(stacks, payouts) {
         const currentPrizeValue = fullPayouts[payoutIdx] || 0;
         playerIndices.forEach(p => {
             const probWinsThisPlace = normStacks[p] / subsetTotal;
-            const remainingPlayers = playerIndices.filter(i => i !== p) || [];
+            const remainingPlayers = playerIndices.filter(i => i !== p);
             const subRes = computePrizeEVs(remainingPlayers, payoutIdx + 1);
             evs[p] += probWinsThisPlace * currentPrizeValue;
             for (const q in subRes) evs[q] += probWinsThisPlace * subRes[q];
@@ -78,24 +79,23 @@ function calculateBF(stacks, payouts, heroIdx, villainIdx) {
     const evWin = calculateICM(ws, payouts)[heroIdx];
     const ls = [...stacks]; ls[heroIdx] -= risk; ls[villainIdx] += risk;
     const evLose = calculateICM(ls, payouts)[heroIdx];
+    
     const reward = evWin - evNow;
     const cost = evNow - evLose;
     if (reward <= 0) return 9.99;
     return cost / reward;
 }
 
-function calculateRiskScore(stack, orbitLeft) {
-    return orbitLeft / (stack / 1.5 || 0.1);
-}
-
 function getEquity(hand, vRangePct) {
     const r1 = hand[0], r2 = hand[1];
     const v1 = RANKS.indexOf(r1), v2 = RANKS.indexOf(r2);
-    const isPair = r1 === r2;
-    const isSuited = hand.endsWith('s');
-    let base = isPair ? (0.85 - v1 * 0.02) : (0.47 + (12-v1)*0.03 + (12-v2)*0.01);
-    if (v1 <= 1 && isPair) base = Math.max(base, 0.82); // AA, KK 保護
+    const isPair = r1 === r2, isSuited = hand.endsWith('s');
+    
+    // シンプルかつ正確な Equity 推定 (AAが負けない曲線)
+    let base = isPair ? (0.85 - v1*0.02) : (0.47 + (12-v1)*0.03 + (12-v2)*0.01);
+    if (isPair && v1 <= 1) base = Math.max(base, 0.82); 
     if (isSuited) base += 0.05;
+    
     const tightnessMod = (1.0 - (vRangePct / 100)) * 0.25;
     return Math.max(0.05, Math.min(0.98, base - tightnessMod));
 }
@@ -109,12 +109,11 @@ document.addEventListener('DOMContentLoaded', () => {
         rangeSettings: document.getElementById('range-settings-section'),
         resultsDisplay: document.getElementById('results-display'),
         resultCards: document.getElementById('result-list'),
-        heatmapSection: document.getElementById('heatmap-section'),
-        heatmapGrid: document.getElementById('heatmap-grid'),
         vGrid: document.getElementById('villain-heatmap-grid'),
+        heatmapGrid: document.getElementById('heatmap-grid'),
+        calcBtn: document.getElementById('calc-btn'),
         heroSelect: document.getElementById('hero-select'),
         villainSelect: document.getElementById('villain-select'),
-        calcBtn: document.getElementById('calc-btn'),
         modeIcm: document.getElementById('mode-icm'),
         modeRange: document.getElementById('mode-range'),
         reqEquity: document.getElementById('req-equity-display'),
@@ -122,32 +121,26 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function updateSelectionPool() {
-        const hVal = elements.heroSelect.value, vVal = elements.villainSelect.value;
         const names = Array.from(document.querySelectorAll('.player-name')).map((inp, i) => inp.value || `P${i+1}`);
         elements.heroSelect.innerHTML = ''; elements.villainSelect.innerHTML = '';
         names.forEach((name, i) => {
             elements.heroSelect.add(new Option(name, i));
             elements.villainSelect.add(new Option(name, i));
         });
-        if (hVal !== "") elements.heroSelect.value = hVal;
-        if (vVal !== "") elements.villainSelect.value = vVal;
     }
 
     function createRow(list, type, val = "", sVal = "") {
-        const div = document.createElement('div');
-        div.className = 'input-row';
-        if (type === 'player') {
-            div.innerHTML = `<input type="text" class="player-name" value="${val}" placeholder="Name"><input type="number" class="player-stack" value="${sVal}" placeholder="BB"><button class="btn-remove">×</button>`;
-            div.querySelector('.player-name').oninput = updateSelectionPool;
-        } else {
-            div.innerHTML = `<label>賞金</label><input type="number" class="payout-input" value="${val}"><button class="btn-remove">×</button>`;
-        }
+        const div = document.createElement('div'); div.className = 'input-row';
+        div.innerHTML = type === 'player' ? `<input type="text" class="player-name" value="${val}"><input type="number" class="player-stack" value="${sVal}"><button class="btn-remove">×</button>` : `<label>賞金</label><input type="number" class="payout-input" value="${val}"><button class="btn-remove">×</button>`;
         div.querySelector('.btn-remove').onclick = () => { div.remove(); updateSelectionPool(); };
+        if (type === 'player') div.querySelector('.player-name').oninput = updateSelectionPool;
         list.appendChild(div);
     }
 
+    // 初期データ
     [50, 31, 19].forEach(v => createRow(elements.payoutList, 'payout', v));
-    [100, 80, 50, 30, 20].forEach((s, idx) => createRow(elements.playerList, 'player', `P${idx+1}`, s));
+    [100, 80, 50, 30, 20].forEach((s, i) => createRow(elements.playerList, 'player', `P${i+1}`, s));
+    updateSelectionPool();
 
     elements.modeIcm.onclick = () => { currentMode = 'icm'; elements.modeIcm.classList.add('active'); elements.modeRange.classList.remove('active'); elements.rangeSettings.classList.add('hidden'); };
     elements.modeRange.onclick = () => { currentMode = 'range'; elements.modeRange.classList.add('active'); elements.modeIcm.classList.remove('active'); elements.rangeSettings.classList.remove('hidden'); updateSelectionPool(); };
@@ -159,20 +152,19 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < 13; i++) {
             for (let j = 0; j < 13; j++) {
                 const r1 = RANKS[i], r2 = RANKS[j], h = i===j ? r1+r1 : (i<j ? r1+r2+'s' : r2+r1+'o');
-                const cell = document.createElement('div');
-                cell.className = 'hand-cell'; cell.innerText = h;
+                const cell = document.createElement('div'); cell.className = 'hand-cell'; cell.innerText = h;
                 cell.onclick = () => {
                     if (villainSelectedHands.has(h)) { villainSelectedHands.delete(h); cell.classList.remove('selected'); }
                     else { villainSelectedHands.add(h); cell.classList.add('selected'); }
                     updateStats(villainSelectedHands, 'villain-range-display', 'villain-combos-display');
                 };
-                if (['AA','KK','QQ','JJ','TT','AKs','AKo','AQs','AQo'].includes(h)) { villainSelectedHands.add(h); cell.classList.add('selected'); }
+                if (['AA','KK','QQ','JJ','TT','AKs','AKo'].includes(h)) { villainSelectedHands.add(h); cell.classList.add('selected'); }
                 elements.vGrid.appendChild(cell);
             }
         }
         updateStats(villainSelectedHands, 'villain-range-display', 'villain-combos-display');
     }
-    initVillainBoard(); updateSelectionPool();
+    initVillainBoard();
 
     elements.calcBtn.onclick = () => {
         const p = Array.from(document.querySelectorAll('.payout-input')).map(i => parseFloat(i.value) || 0);
@@ -184,34 +176,16 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.resultCards.innerHTML = '';
             results.forEach((ev, i) => {
                 let bfs = [];
-                s.forEach((sj, j) => {
-                    if (i !== j && s[i] > 0 && s[j] > 0) {
-                        const bf = calculateBF(s, p, i, j);
-                        bfs.push({ name: names[j], val: bf.toFixed(2), re: (bf / (1 + bf) * 100).toFixed(1) });
-                    }
-                });
-                const avgBf = (bfs.length > 0) ? (bfs.reduce((a, b) => a + parseFloat(b.val), 0) / bfs.length).toFixed(2) : "1.00";
-                const row = document.createElement('div'); row.className = 'res-card';
-                row.innerHTML = `
-                    <div class="res-card-main">
-                        <div>
-                            <div class="res-player">${names[i]} <span class="avg-bf-tag">Avg BF: ${avgBf}</span></div>
-                            <div class="res-risk">Risk Score: ${calculateRiskScore(s[i], i+1).toFixed(1)}</div>
-                        </div>
-                        <div class="res-ev">${ev.toFixed(2)}</div>
-                    </div>
-                    <div class="res-bf-details">
-                        ${bfs.map(b => `<div class="bf-row">vs ${b.name}: <strong>${b.val}</strong> <span class="bf-re">(RE: ${b.re}%)</span></div>`).join('')}
-                    </div>
-                `;
-                elements.resultCards.appendChild(row);
+                s.forEach((sj, j) => { if (i!==j && s[i]>0 && s[j]>0) { let bf = calculateBF(s,p,i,j); bfs.push({n: names[j], v: bf.toFixed(2), re: (bf/(1+bf)*100).toFixed(1)}); } });
+                const card = document.createElement('div'); card.className = 'res-card';
+                card.innerHTML = `<div class="res-card-main"><div><div class="res-player">${names[i]} <span class="avg-bf-tag">Avg BF: ${(bfs.reduce((a,b)=>a+parseFloat(b.v),0)/Math.max(1,bfs.length)).toFixed(2)}</span></div><div class="res-risk">Risk Score: ${(i+1 / (s[i]/1.5 || 0.1)).toFixed(1)}</div></div><div class="res-ev">${ev.toFixed(2)}</div></div><div class="res-bf-details">${bfs.map(b => `<div class="bf-row">vs ${b.n}: <strong>${b.v}</strong> <span class="bf-re">(RE: ${b.re}%)</span></div>`).join('')}</div>`;
+                elements.resultCards.appendChild(card);
             });
             elements.resultsDisplay.classList.remove('hidden');
         } else {
             const hI = parseInt(elements.heroSelect.value), vI = parseInt(elements.villainSelect.value);
             const risk = Math.min(s[hI], s[vI]);
-            const ef = calculateICM(s,p)[hI];
-            const ws = [...s]; ws[hI]+=risk; ws[vI]-=risk; const ew = calculateICM(ws,p)[hI];
+            const ef = calculateICM(s,p)[hI], ws = [...s]; ws[hI]+=risk; ws[vI]-=risk; const ew = calculateICM(ws,p)[hI];
             const ls = [...s]; ls[hI]-=risk; ls[vI]+=risk; const el = calculateICM(ls,p)[hI];
             const pr = (ef-el)/(ew-el);
             elements.reqEquity.innerText = `Req. Equity: ${(pr*100).toFixed(1)}%`;
@@ -221,8 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (let j=0; j<13; j++) {
                     const hStr = RANKS[i] + (i===j ? RANKS[i] : (i<j ? RANKS[j]+'s' : RANKS[j]+'o'));
                     const eq = getEquity(hStr, vPct);
-                    const cell = document.createElement('div');
-                    cell.className = `hand-cell ${eq >= pr ? 'call' : 'fold'} ${elements.specificHand.value && hStr === elements.specificHand.value.slice(0,2) ? 'hero-target' : ''}`;
+                    const cell = document.createElement('div'); cell.className = `hand-cell ${eq >= pr ? 'call' : 'fold'} ${elements.specificHand.value && hStr === elements.specificHand.value.slice(0,2) ? 'hero-target' : ''}`;
                     cell.innerHTML = `<span>${hStr}</span><span class="eq-val">${(eq*100).toFixed(0)}%</span>`;
                     elements.heatmapGrid.appendChild(cell);
                 }

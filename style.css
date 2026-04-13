@@ -2,99 +2,98 @@
     --bg-light: #f4f7f6;
     --card-bg: #ffffff;
     --primary: #0d6efd;
-    --text-main: #212529;
+    --text-main: #1a1a1a;
     --text-dim: #6c757d;
     --border: #dee2e6;
     --danger: #dc3545;
     --success: #198754;
-    --warning: #ffc107;
-    --orange: #fd7e14;
+    --warning: #f59e0b;
+    --selected-orange: #fd7e14; /* 選択時の色 */
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-    font-family: 'Outfit', -apple-system, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: var(--bg-light);
     color: var(--text-main);
+    padding: 15px;
 }
 
 .app-container {
     max-width: 500px;
     margin: 0 auto;
-    padding: 20px;
 }
 
-header { text-align: center; margin-bottom: 2rem; }
-h1 { font-size: 2.2rem; font-weight: 700; color: #1a1a1a; }
+header { text-align: center; margin-bottom: 20px; }
+h1 { font-size: 1.8rem; font-weight: 800; }
 
 .status-badge {
-    display: inline-block; font-size: 0.7rem; padding: 2px 8px;
-    background: #e9ecef; border: 1px solid var(--border); border-radius: 100px;
+    font-size: 0.7rem; background: #e9ecef; padding: 2px 10px; border-radius: 100px;
 }
 
 .card-section {
     background: var(--card-bg); border: 1px solid var(--border);
-    border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;
+    border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .input-row {
-    display: flex; gap: 10px; align-items: center;
-    background: #f8f9fa; padding: 8px; border-radius: 8px;
-    margin-bottom: 8px; border: 1px solid var(--border);
+    display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+    background: #f8f9fa; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
 }
 
 input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); font-size: 1rem; min-width: 0; }
-.btn-remove { background: #fee2e2; color: var(--danger); border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+.btn-remove { background: #fee2e2; color: var(--danger); border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
 
 .btn-primary {
-    width: 100%; padding: 18px; border-radius: 8px; border: none;
-    background: var(--primary); color: white; font-size: 1.1rem; font-weight: 600;
-    cursor: pointer;
+    width: 100%; padding: 18px; border-radius: 10px; border: none;
+    background: var(--primary); color: white; font-weight: 700; font-size: 1.1rem; cursor: pointer;
 }
 
+/* 分析詳細カード */
 .res-card {
-    background: #ffffff; border: 1px solid var(--border); border-radius: 8px;
-    padding: 1.2rem; margin-bottom: 12px; border-left: 5px solid var(--primary);
+    background: #ffffff; border: 1px solid var(--border); border-radius: 10px;
+    padding: 1.2rem; margin-bottom: 15px; border-left: 6px solid var(--primary);
 }
-
 .res-card-main { display: flex; justify-content: space-between; align-items: center; }
-.res-player { font-size: 1.1rem; font-weight: 600; }
-.avg-bf-tag { font-size: 0.7rem; background: #e9ecef; padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
-.res-risk { font-size: 0.75rem; color: var(--warning); font-weight: 600; }
-.res-ev { font-size: 1.4rem; font-weight: 700; color: var(--success); }
+.res-player { font-size: 1.1rem; font-weight: 700; }
+.res-ev { font-size: 1.6rem; font-weight: 800; color: var(--success); }
+.res-risk { font-size: 0.8rem; color: var(--warning); margin-top: 4px; font-weight: 600; }
 
 .res-bf-details {
-    margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border);
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;
+    margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
 }
-.bf-row { font-size: 0.8rem; color: var(--text-dim); }
-.bf-re { font-weight: 600; color: var(--danger); font-size: 0.7rem; }
+.bf-row { font-size: 0.85rem; color: var(--text-dim); }
+.bf-row strong { color: var(--text-main); }
+.bf-re { display: block; color: var(--danger); font-size: 0.75rem; font-weight: 700; }
 
-/* ヒートマップ */
+/* ヒートマップ：昨日の使いやすさを再現 */
 .heatmap-wrapper {
-    background: #ffffff; padding: 4px; border: 1px solid var(--border);
-    border-radius: 4px; margin: 1.5rem 0; overflow-x: auto;
+    background: #ffffff; border: 1px solid var(--border); border-radius: 8px;
+    padding: 4px; margin: 20px 0; overflow-x: auto;
 }
-.heatmap-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 1px; min-width: 360px; }
+.heatmap-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 1px; min-width: 320px; background: #e2e8f0; }
 .hand-cell {
-    aspect-ratio: 1/1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 0.45rem; background: #f8f9fa; color: #adb5bd;
+    aspect-ratio: 1/1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-size: 0.45rem; background: #f8f9fa; color: #94a3b8;
 }
 
-/* ★ 重要：選択したレンジに色を確実に付けるための修正 ★ */
-.selection-grid .hand-cell.selected {
-    background-color: var(--orange) !important;
+/* ★ 選択したハンドに確実に色を付ける設定 ★ */
+.hand-cell.selected {
+    background-color: var(--selected-orange) !important;
     color: white !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
 }
 
-.hand-cell.call { background-color: var(--success) !important; color: white !important; font-weight: 700 !important; }
+/* 判定色 */
+.hand-cell.call { background-color: var(--success) !important; color: white !important; font-weight: 800 !important; }
 .hand-cell.fold { background-color: #f1f3f5; }
-.hand-cell.hero-target { outline: 3px solid #000; z-index: 5; }
+.hand-cell.hero-target { outline: 3px solid #000; z-index: 10; }
 
 .hidden { display: none; }
 .mode-switch { display: flex; background: #e9ecef; border-radius: 100px; padding: 4px; margin-bottom: 1.5rem; }
-.btn-tab { flex: 1; border: none; background: transparent; padding: 10px; border-radius: 100px; cursor: pointer; color: var(--text-dim); }
-.btn-tab.active { background: var(--primary); color: white; }
+.btn-tab { flex: 1; border: none; background: transparent; padding: 12px; border-radius: 100px; cursor: pointer; color: var(--text-dim); }
+.btn-tab.active { background: var(--primary); color: white; font-weight: 600; }
