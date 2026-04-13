@@ -1,6 +1,6 @@
 /** 
- * ICM Calculator & Range Analyzer (Standard White v1.4.1)
- * Final Precision Fix & Ultra Responsive Layout
+ * ICM Calculator & Range Analyzer (Standard White v1.5.0)
+ * Ultra-Responsive & High-Precision Equity Engine
  */
 
 const RANKS = 'AKQJT98765432';
@@ -70,35 +70,38 @@ function calculateICM(stacks, payouts) {
     return allIndices.map(i => resultDict[i] || 0);
 }
 
-// --- Dynamic Equity Model v1.4.1 (Non-linear & Premium Aware) ---
+// --- Advanced Equity Model v1.5.0 (Sigmoid Premium Curve) ---
 function getPrecisionEquity(heroHandStr, vRangeSet) {
     const r1 = heroHandStr[0], r2 = heroHandStr[1];
     const v1 = RANKS.indexOf(r1), v2 = RANKS.indexOf(r2);
     const isPair = r1 === r2;
     const isSuited = heroHandStr.endsWith('s');
     
-    // 相手がタイトなほど、一般ハンドの勝率は落ちるがプレミアムは高いまま
+    // 相手のレンジ密度 (%)
     const vRangePct = Math.max(0.1, (vRangeSet.size / 169) * 100);
     const tightness = 1.0 - (vRangePct / 100);
 
     let eq;
     if (isPair) {
-        // AA(v1=0)はタイト相手でも80%以上、22(v1=12)はタイト相手には無力
-        const base = 0.85 - (v1 * 0.02);
-        const tightEq = 0.82 - (v1 * 0.04); 
-        eq = base * (1 - tightness) + Math.max(tightEq, 0.35) * tightness;
-        if (v1 <= 1) eq = Math.max(eq, 0.81); // AA, KK 保護
+        // ペア: 相手がタイトでもAA/KKは圧倒的、中ポケット以下は急落する
+        const premiumPower = 0.85 - (v1 * 0.015);
+        const weakPower = 0.45 - (v1 * 0.03);
+        // シグモイド曲線的な重み付け
+        eq = premiumPower * (1 - tightness) + Math.max(weakPower, 0.33) * tightness;
+        if (v1 <= 1) eq = Math.max(eq, 0.82); // AA, KK 保護
     } else {
-        const highCardVal = (12 - v1) + (12 - v2);
-        const base = 0.45 + (highCardVal / 24) * 0.25;
-        const penalty = tightness * (0.45 - (highCardVal / 24) * 0.30);
+        // 非ペア: AK, AQ 等は相手がタイトでも Equity 40% 以上を維持すべき
+        const cardSum = (12 - v1) + (12 - v2);
+        const base = 0.46 + (cardSum / 24) * 0.28;
+        const penalty = tightness * (0.50 - (cardSum / 24) * 0.35);
         eq = base - penalty;
         if (isSuited) eq += 0.05;
-        if (r1 === 'A' && v2 <= 1) eq = Math.max(eq, 0.62 - tightness * 0.2); // AK, AQ 保護
+        // AK, AQ, AJ の強固な保護
+        if (r1 === 'A' && v2 <= 3) eq = Math.max(eq, 0.64 - tightness * 0.18);
     }
 
-    // Aブロッカー効果
-    if (heroHandStr.includes('A')) eq += tightness * 0.05;
+    // Aブロッカー効果 (タイトな相手ほど有効)
+    if (heroHandStr.includes('A')) eq += tightness * 0.06;
 
     return Math.max(0.01, Math.min(0.99, eq));
 }
@@ -129,7 +132,6 @@ function calculateRiskScore(stack, orbitLeft) {
 // --- UI ---
 document.addEventListener('DOMContentLoaded', () => {
     let currentMode = 'icm';
-    let pCount = 0;
     const elements = {
         payoutList: document.getElementById('payout-list'),
         playerList: document.getElementById('player-list'),
@@ -145,7 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
         modeIcm: document.getElementById('mode-icm'),
         modeRange: document.getElementById('mode-range'),
         reqEquity: document.getElementById('req-equity-display'),
-        specificHand: document.getElementById('specific-hand-input')
+        specificHand: document.getElementById('specific-hand-input'),
+        totalPayoutDisp: document.getElementById('total-payout-display')
     };
 
     function updateSelectionPool() {
@@ -191,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     else { villainSelectedHands.add(h); cell.classList.add('selected'); }
                     updateStats(villainSelectedHands, 'villain-range-display', 'villain-combos-display');
                 };
-                if (['AA','KK','QQ','JJ','TT','AKs','AKo'].includes(h)) { villainSelectedHands.add(h); cell.classList.add('selected'); }
+                if (['AA','KK','QQ','JJ','TT','AKs','AKo','AQs','AQo'].includes(h)) { villainSelectedHands.add(h); cell.classList.add('selected'); }
                 elements.vGrid.appendChild(cell);
             }
         }
@@ -219,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
                 const card = document.createElement('div'); card.className = 'res-card';
-                card.innerHTML = `<div class="res-card-main"><div><div class="res-player">${names[i]}<span class="avg-bf-tag">Avg BF: ${(bfs.reduce((a,b)=>a+parseFloat(b.val),0)/Math.max(1,bfs.length)).toFixed(2)}</span></div><div class="res-risk">Risk Score: ${rs.toFixed(1)}</div></div><div class="res-ev">${ev.toFixed(2)}</div></div><div class="res-bf-details">${bfs.map(b => `<div class="bf-row">vs ${b.name}: <strong>${b.val}</strong> <span class="bf-re">(RE: ${b.re}%)</span></div>`).join('')}</div>`;
+                card.innerHTML = `<div class="res-card-main"><div><div class="res-player">${names[i]}<span class="avg-bf-tag">Avg BF: ${(bfs.reduce((a,b)=>a+parseFloat(b.val),0)/Math.max(1,bfs.length)).toFixed(2)}</span></div><div class="res-risk">Risk: ${rs.toFixed(1)}</div></div><div class="res-ev">${ev.toFixed(2)}</div></div><div class="res-bf-details">${bfs.map(b => `<div class="bf-row"><span class="bf-val">vs ${b.name}: ${b.val}</span><span class="bf-re">RE: ${b.re}%</span></div>`).join('')}</div>`;
                 elements.resultCards.appendChild(card);
             });
             elements.resultsDisplay.classList.remove('hidden');
@@ -243,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             elements.heatmapSection.classList.remove('hidden');
+            elements.heatmapSection.scrollIntoView({ behavior: 'smooth' });
         }
     };
 });

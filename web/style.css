@@ -1,14 +1,15 @@
 :root {
-    --bg-light: #f4f7f6;
+    --bg-light: #f8fafc;
     --card-bg: #ffffff;
-    --primary: #0d6efd;
-    --primary-glow: rgba(13, 110, 253, 0.2);
-    --text-main: #212529;
-    --text-dim: #6c757d;
-    --border: #dee2e6;
-    --danger: #dc3545;
-    --success: #198754;
-    --warning: #ffc107;
+    --primary: #2563eb;
+    --primary-glow: rgba(37, 99, 235, 0.1);
+    --text-main: #0f172a;
+    --text-dim: #64748b;
+    --border: #e2e8f0;
+    --danger: #ef4444;    /* 鮮やかな赤 */
+    --success: #22c55e;   /* 鮮やかな緑 */
+    --warning: #f59e0b;
+    --accent: #edf2f7;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -17,123 +18,109 @@ body {
     font-family: 'Outfit', sans-serif;
     background-color: var(--bg-light);
     color: var(--text-main);
-    line-height: 1.5;
-    overflow-x: hidden;
+    line-height: 1.6;
 }
 
 .app-container {
     max-width: 550px;
     margin: 0 auto;
-    padding: 15px;
+    padding: 16px;
 }
 
 header { text-align: center; margin-bottom: 1.5rem; }
-h1 { font-size: 1.8rem; font-weight: 800; color: #1e293b; }
+h1 { font-size: 2rem; font-weight: 800; color: #1e293b; letter-spacing: -0.04em; }
 
 .status-badge {
-    font-size: 0.65rem;
-    padding: 2px 10px;
-    background: #e2e8f0;
-    border-radius: 100px;
-    color: #475569;
+    font-size: 0.7rem; padding: 3px 12px; background: #f1f5f9;
+    border-radius: 100px; color: #475569; font-weight: 600;
 }
 
 .card-section {
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.2rem;
+    border-radius: 20px;
+    padding: 1.5rem;
     margin-bottom: 1rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 
 .input-row {
     display: grid;
-    grid-template-columns: 2fr 1fr 40px; /* 名前、数値、削除ボタン */
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 8px;
-    width: 100%;
-}
-
-@media (max-width: 400px) {
-    .input-row {
-        grid-template-columns: 1fr 80px 40px;
-    }
+    grid-template-columns: 2fr 1fr 44px;
+    gap: 10px;
+    margin-bottom: 10px;
 }
 
 input, select {
-    width: 100%;
-    min-width: 0; /* Important! Prevents overflow in flex/grid */
-    background: #ffffff;
-    border: 1px solid var(--border);
-    padding: 10px;
-    border-radius: 8px;
-    font-size: 0.95rem;
+    width: 100%; min-width: 0;
+    background: #ffffff; border: 1px solid var(--border);
+    padding: 12px; border-radius: 10px; font-size: 1rem;
+    transition: all 0.2s;
 }
 
+input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 4px var(--primary-glow); }
+
 .btn-icon {
-    background: var(--primary);
-    color: white; border: none;
-    width: 36px; height: 36px; border-radius: 50%;
-    cursor: pointer; font-size: 1.2rem;
+    background: var(--primary); color: white; border: none;
+    width: 40px; height: 40px; border-radius: 50%;
+    cursor: pointer; font-size: 1.4rem; display: flex; align-items: center; justify-content: center;
 }
 
 .btn-primary {
-    width: 100%; padding: 18px; border-radius: 12px; border: none;
-    background: var(--primary); color: white; font-weight: 700;
-    box-shadow: 0 5px 15px var(--primary-glow);
+    width: 100%; padding: 20px; border-radius: 14px; border: none;
+    background: var(--primary); color: white; font-weight: 800; font-size: 1.1rem;
+    cursor: pointer; box-shadow: 0 10px 25px var(--primary-glow);
 }
 
-/* 分析結果表示の復元 */
+/* 分析結果：リッチ版の完全復元・進化 */
 .res-card {
-    background: #ffffff;
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.2rem;
-    margin-bottom: 12px;
-    border-left: 6px solid var(--primary);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    background: #ffffff; border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.5rem; margin-bottom: 15px;
+    border-left: 8px solid var(--primary);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04);
 }
 
-.res-card-main {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.res-player { font-size: 1.1rem; font-weight: 700; }
+.res-card-main { display: flex; justify-content: space-between; align-items: flex-start; }
+.res-player { font-size: 1.25rem; font-weight: 800; color: #1e293b; }
 .avg-bf-tag {
-    font-size: 0.7rem; background: #f1f5f9; color: var(--primary);
-    padding: 2px 8px; border-radius: 4px; margin-left: 8px;
+    font-size: 0.75rem; background: #eff6ff; color: var(--primary);
+    padding: 2px 10px; border-radius: 6px; margin-left: 5px; font-weight: 700;
 }
-.res-risk { font-size: 0.75rem; color: #f59e0b; margin-top: 2px; }
-.res-ev { font-size: 1.5rem; font-weight: 800; color: var(--success); }
+.res-risk { font-size: 0.85rem; color: var(--warning); font-weight: 600; margin-top: 4px; }
+.res-ev { font-size: 1.8rem; font-weight: 900; color: var(--success); }
 
 .res-bf-details {
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 1px dashed #e2e8f0;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 10px;
+    margin-top: 15px; padding-top: 12px; border-top: 2px solid #f1f5f9;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;
 }
 
-.bf-row { font-size: 0.8rem; color: #64748b; }
-.bf-re { color: var(--danger); font-weight: 700; font-size: 0.75rem; }
+.bf-row { font-size: 0.85rem; color: #475569; padding: 6px; background: #f8fafc; border-radius: 8px; }
+.bf-val { font-weight: 800; color: #1e293b; }
+.bf-re { display: block; font-size: 0.75rem; color: var(--danger); font-weight: 700; }
 
-/* ヒートマップ */
+/* ヒートマップ：視認性の極大化 */
 .heatmap-wrapper {
-    background: #fff; padding: 2px; border: 1px solid var(--border);
-    border-radius: 8px; margin: 15px 0; overflow-x: auto;
+    background: #0f172a; padding: 3px; border-radius: 12px;
+    margin: 20px 0; overflow-x: auto;
 }
 .heatmap-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 1px; min-width: 320px; }
 .hand-cell {
     aspect-ratio: 1/1; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    font-size: 0.45rem; background: #f8fafc; color: #94a3b8;
+    font-size: 0.45rem; background: #1e293b; color: #64748b;
 }
-.hand-cell.call { background: var(--success); color: white; font-weight: 700; }
-.hand-cell.hero-target { outline: 3px solid #000; z-index: 5; }
+
+.hand-cell.call { background: var(--success); color: white; font-weight: 800; }
+.hand-cell.fold { background: #ef4444; color: white; opacity: 0.8; } /* 赤を復元 */
+.hand-cell .eq-val { font-size: 0.35rem; opacity: 0.9; margin-top: 1px; }
+
+.hand-cell.hero-target { outline: 4px solid #fff; box-shadow: 0 0 15px rgba(255,255,255,0.5); z-index: 10; }
 
 .hidden { display: none; }
+
+@media (max-width: 480px) {
+    .app-container { padding: 8px; }
+    h1 { font-size: 1.6rem; }
+    .res-player { font-size: 1.1rem; }
+    .res-ev { font-size: 1.5rem; }
+}
