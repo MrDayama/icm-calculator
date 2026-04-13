@@ -7,7 +7,6 @@
     --border: #dee2e6;
     --danger: #dc3545;
     --success: #198754;
-    --warning: #ffc107;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -34,46 +33,44 @@ h1 { font-size: 2.2rem; font-weight: 700; color: #1a1a1a; }
 
 .card-section {
     background: var(--card-bg); border: 1px solid var(--border);
-    border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;
+    border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.section-header {
-    display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;
+.input-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
 }
 
 .input-row {
-    display: flex; gap: 10px; align-items: center; margin-bottom: 8px;
-    background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 input {
-    flex: 1; min-width: 0; padding: 10px; border-radius: 6px; border: 1px solid var(--border);
+    flex: 1; min-width: 0; padding: 10px; border-radius: 8px;
+    border: 1px solid var(--border); font-size: 1rem;
 }
 
-.btn-remove { background: #fee2e2; color: var(--danger); border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; }
+.btn-remove { background: #fee2e2; color: var(--danger); border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+.btn-sub { background: none; border: none; color: var(--primary); cursor: pointer; font-weight: 600; padding: 5px 0; }
 
 .btn-primary {
-    width: 100%; padding: 18px; border-radius: 8px; border: none;
-    background: var(--primary); color: white; font-size: 1.1rem; font-weight: 600;
+    width: 100%; border: none; padding: 18px; border-radius: 10px;
+    background: var(--primary); color: white; font-weight: 700; font-size: 1.1rem; cursor: pointer;
+    box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2);
 }
 
-/* 計算結果 */
+.result-cards { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
+
 .res-card {
-    background: #ffffff; border: 1px solid var(--border); border-radius: 8px;
-    padding: 1.2rem; margin-bottom: 12px; border-left: 6px solid var(--primary);
+    background: #f8f9fa; border: 1px solid var(--border); border-radius: 8px;
+    padding: 1.2rem; display: flex; justify-content: space-between; align-items: center;
 }
-.res-card-main { display: flex; justify-content: space-between; align-items: center; }
-.res-player { font-size: 1.2rem; font-weight: 700; }
-.res-ev { font-size: 1.6rem; font-weight: 800; color: var(--success); }
-.res-risk { font-size: 0.8rem; color: var(--warning); font-weight: 600; margin-top: 4px; }
 
-.res-bf-details {
-    margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border);
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-}
-.bf-row { font-size: 0.85rem; color: var(--text-dim); }
-.bf-row strong { color: var(--text-main); }
-.bf-re { display: block; color: var(--danger); font-size: 0.75rem; font-weight: 700; }
+.res-player { font-size: 1.1rem; font-weight: 600; }
+.res-ev { font-size: 1.4rem; font-weight: 800; color: var(--success); }
 
 .hidden { display: none; }

@@ -3,51 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ICM Calculator - Pure v1.8.0</title>
+    <title>ICM Calculator - Stable v1.1.0</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=1.8.0">
+    <link rel="stylesheet" href="style.css?v=1.1.0">
 </head>
 <body>
     <div class="app-container">
         <header>
             <h1>ICM Calculator</h1>
-            <div class="status-badge">v1.8.0 - Pure ICM (Legacy Mode)</div>
+            <div class="status-badge">v1.1.0 - Stable Edition</div>
         </header>
 
         <main>
-            <!-- 賞金設定 -->
             <section class="card-section">
-                <div class="section-header">
-                    <h2>Payouts (%)</h2>
-                    <button id="add-payout" class="btn-icon">+</button>
-                </div>
+                <h2>Payouts (%)</h2>
                 <div id="payout-list" class="input-list"></div>
+                <button onclick="addPayout()" class="btn-sub">+ Add Payout</button>
             </section>
 
-            <!-- プレイヤー設定 -->
             <section class="card-section">
-                <div class="section-header">
-                    <h2>Stacks (BB)</h2>
-                    <button id="add-player" class="btn-icon">+</button>
-                </div>
+                <h2>Stacks (BB)</h2>
                 <div id="player-list" class="input-list"></div>
+                <button onclick="addPlayer()" class="btn-sub">+ Add Player</button>
             </section>
 
-            <button id="calc-btn" class="btn-primary">計算実行</button>
+            <button id="calc-btn" class="btn-primary" onclick="calculate()">RUN ICM ANALYSIS</button>
 
-            <!-- 計算結果表示エリア -->
             <section id="results-display" class="card-section hidden" style="margin-top: 2rem;">
-                <div class="section-header">
-                    <h2>Analysis Results</h2>
-                </div>
-                <div id="result-list"></div>
+                <h2>Analysis Results</h2>
+                <div id="result-list" class="result-cards"></div>
             </section>
         </main>
 
         <footer>
-            <p>© 2026 Poker ICM Tools - Pure Stable Edition</p>
+            <p>© 2026 Poker ICM Tools - Legacy Stable Edition</p>
         </footer>
     </div>
-    <script src="app.js?v=1.8.0"></script>
+    <script src="app.js?v=1.1.0"></script>
 </body>
 </html>
