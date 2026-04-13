@@ -1,6 +1,6 @@
 /** 
- * ICM Calculator & Range Analyzer (Standard White v1.4.0)
- * Corrected BF Math & Layout Fix
+ * ICM Calculator & Range Analyzer (Standard White v1.4.1)
+ * Final Precision Fix & Ultra Responsive Layout
  */
 
 const RANKS = 'AKQJT98765432';
@@ -17,8 +17,8 @@ function updateStats(handsSet, displayId, comboId) {
     handsSet.forEach(h => { totalCombos += getCombos(h); });
     const pct = ((totalCombos / 1326) * 100).toFixed(1);
     const disp = document.getElementById(displayId);
-    const cDisp = document.getElementById(comboId);
     if (disp) disp.innerText = `${pct}%`;
+    const cDisp = document.getElementById(comboId);
     if (cDisp) cDisp.innerText = totalCombos;
     return parseFloat(pct);
 }
@@ -29,9 +29,7 @@ function calculateICM(stacks, payouts) {
     if (n === 0) return [];
     const actualPayouts = payouts.slice(0, n);
     const fullPayouts = [...actualPayouts, ...new Array(Math.max(0, n - actualPayouts.length)).fill(0)];
-    
-    // BB正規化
-    const normStacks = stacks.map(s => Math.max(0.1, parseFloat(s) || 0) / 10.0);
+    const normStacks = stacks.map(s => Math.max(0.01, parseFloat(s) || 0));
     const cache = new Map();
 
     function computePrizeEVs(playerIndices, payoutIdx) {
@@ -40,7 +38,7 @@ function calculateICM(stacks, payouts) {
         if (cache.has(key)) return cache.get(key);
 
         const currentNumPlayers = playerIndices.length;
-        if (currentNumPlayers === 0 || payoutIdx >= n) return {};
+        if (currentNumPlayers === 0 || payoutIdx >= fullPayouts.length) return {};
 
         if (currentNumPlayers === 1) {
             const idx = playerIndices[0];
@@ -49,21 +47,14 @@ function calculateICM(stacks, payouts) {
             return { [idx]: sum };
         }
 
-        const subsetTotal = playerIndices.reduce((s, i) => s + (normStacks[i] || 0), 0);
+        const subsetTotal = playerIndices.reduce((s, i) => s + normStacks[i], 0);
         const evs = {};
         playerIndices.forEach(idx => evs[idx] = 0);
-
-        if (subsetTotal <= 0) {
-            let sum = 0;
-            for (let i = payoutIdx; i < fullPayouts.length; i++) sum += (fullPayouts[i] || 0);
-            const share = sum / currentNumPlayers;
-            playerIndices.forEach(idx => evs[idx] = share);
-            return evs;
-        }
+        if (subsetTotal <= 0) return evs;
 
         const currentPrizeValue = fullPayouts[payoutIdx] || 0;
         playerIndices.forEach(p => {
-            const probWinsThisPlace = (normStacks[p] || 0) / subsetTotal;
+            const probWinsThisPlace = normStacks[p] / subsetTotal;
             const remainingPlayers = playerIndices.filter(i => i !== p);
             const subRes = computePrizeEVs(remainingPlayers, payoutIdx + 1);
             evs[p] += probWinsThisPlace * currentPrizeValue;
@@ -79,25 +70,37 @@ function calculateICM(stacks, payouts) {
     return allIndices.map(i => resultDict[i] || 0);
 }
 
-// --- Precision Equity Model (Category Stats & Blocker) ---
+// --- Dynamic Equity Model v1.4.1 (Non-linear & Premium Aware) ---
 function getPrecisionEquity(heroHandStr, vRangeSet) {
     const r1 = heroHandStr[0], r2 = heroHandStr[1];
     const v1 = RANKS.indexOf(r1), v2 = RANKS.indexOf(r2);
-    const isPair = r1 === r2, isSuited = heroHandStr.endsWith('s');
+    const isPair = r1 === r2;
+    const isSuited = heroHandStr.endsWith('s');
     
-    const pairEquities = [85, 82, 80, 77, 75, 72, 70, 67, 65, 62, 60, 57, 55];
-    let baseEq = isPair ? pairEquities[v1] / 100 : (45 + (12-v1)*3 + (12-v2)*1.5) / 100;
-    if (isSuited) baseEq += 0.04;
+    // 相手がタイトなほど、一般ハンドの勝率は落ちるがプレミアムは高いまま
+    const vRangePct = Math.max(0.1, (vRangeSet.size / 169) * 100);
+    const tightness = 1.0 - (vRangePct / 100);
 
-    const vRangePct = (vRangeSet.size / 169) * 100;
-    let blockerMod = 0;
-    if (vRangeSet.size > 0) {
-        const topCards = ['A', 'K', 'Q'];
-        topCards.forEach(c => { if (heroHandStr.includes(c)) blockerMod += (1.0 - vRangePct/100) * 0.05; });
+    let eq;
+    if (isPair) {
+        // AA(v1=0)はタイト相手でも80%以上、22(v1=12)はタイト相手には無力
+        const base = 0.85 - (v1 * 0.02);
+        const tightEq = 0.82 - (v1 * 0.04); 
+        eq = base * (1 - tightness) + Math.max(tightEq, 0.35) * tightness;
+        if (v1 <= 1) eq = Math.max(eq, 0.81); // AA, KK 保護
+    } else {
+        const highCardVal = (12 - v1) + (12 - v2);
+        const base = 0.45 + (highCardVal / 24) * 0.25;
+        const penalty = tightness * (0.45 - (highCardVal / 24) * 0.30);
+        eq = base - penalty;
+        if (isSuited) eq += 0.05;
+        if (r1 === 'A' && v2 <= 1) eq = Math.max(eq, 0.62 - tightness * 0.2); // AK, AQ 保護
     }
 
-    const tightnessScaling = (1.0 - (vRangePct / 100)) * 0.40;
-    return Math.max(0.02, Math.min(0.99, baseEq - tightnessScaling + blockerMod));
+    // Aブロッカー効果
+    if (heroHandStr.includes('A')) eq += tightness * 0.05;
+
+    return Math.max(0.01, Math.min(0.99, eq));
 }
 
 function calculateBF(stacks, payouts, heroIdx, villainIdx) {
@@ -111,9 +114,9 @@ function calculateBF(stacks, payouts, heroIdx, villainIdx) {
     const evLose = calculateICM(ls, payouts)[heroIdx];
     
     const reward = evWin - evNow;
-    const risk_ev = evNow - evLose;
+    const cost = evNow - evLose;
     if (reward <= 0) return 9.99;
-    return risk_ev / reward;
+    return cost / reward;
 }
 
 function calculateRiskScore(stack, orbitLeft) {
@@ -126,6 +129,7 @@ function calculateRiskScore(stack, orbitLeft) {
 // --- UI ---
 document.addEventListener('DOMContentLoaded', () => {
     let currentMode = 'icm';
+    let pCount = 0;
     const elements = {
         payoutList: document.getElementById('payout-list'),
         playerList: document.getElementById('player-list'),
@@ -141,14 +145,12 @@ document.addEventListener('DOMContentLoaded', () => {
         modeIcm: document.getElementById('mode-icm'),
         modeRange: document.getElementById('mode-range'),
         reqEquity: document.getElementById('req-equity-display'),
-        totalPayoutDisp: document.getElementById('total-payout-display'),
-        calcSummary: document.getElementById('calculation-summary-area'),
         specificHand: document.getElementById('specific-hand-input')
     };
 
     function updateSelectionPool() {
         const hVal = elements.heroSelect.value, vVal = elements.villainSelect.value;
-        const names = Array.from(document.querySelectorAll('.player-name')).map((inp, i) => inp.value || `Player ${i+1}`);
+        const names = Array.from(document.querySelectorAll('.player-name')).map((inp, i) => inp.value || `P${i+1}`);
         elements.heroSelect.innerHTML = ''; elements.villainSelect.innerHTML = '';
         names.forEach((name, i) => {
             elements.heroSelect.add(new Option(name, i));
@@ -165,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
             div.innerHTML = `<input type="text" class="player-name" value="${val}" placeholder="Name"><input type="number" class="player-stack" value="${sVal}" placeholder="BB" step="any"><button class="btn-remove">×</button>`;
             div.querySelector('.player-name').oninput = updateSelectionPool;
         } else {
-            div.innerHTML = `<label>賞金</label><input type="number" class="payout-input" value="${val}" placeholder="Value" step="any"><button class="btn-remove">×</button>`;
+            div.innerHTML = `<label>賞金</label><input type="number" class="payout-input" value="${val}" placeholder="Val" step="any"><button class="btn-remove">×</button>`;
         }
         div.querySelector('.btn-remove').onclick = () => { div.remove(); updateSelectionPool(); };
         list.appendChild(div);
@@ -195,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    [50, 30, 20].forEach(v => createRow(elements.payoutList, 'payout', v));
+    [50, 31, 19].forEach(v => createRow(elements.payoutList, 'payout', v));
     [100, 80, 50, 30, 20].forEach((s, idx) => createRow(elements.playerList, 'player', `P${idx+1}`, s));
     initVillainBoard(); updateSelectionPool(); updateStats(villainSelectedHands, 'villain-range-display', 'villain-combos-display');
 
@@ -208,30 +210,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const results = calculateICM(s, p);
             elements.resultCards.innerHTML = '';
             results.forEach((ev, i) => {
-                const risk = calculateRiskScore(s[i], i+1);
+                const rs = calculateRiskScore(s[i], i+1);
                 let bfs = [];
-                s.forEach((sj, j) => { if (i !== j && s[i]>0 && s[j]>0) bfs.push({name: names[j], val: calculateBF(s,p,i,j).toFixed(2)}); });
-                const row = document.createElement('div'); row.className = 'res-card';
-                row.innerHTML = `<div class="res-card-main"><div class="res-player">${names[i]} <span class="avg-bf-tag">Risk: ${risk.toFixed(1)}</span></div><div class="res-ev">${ev.toFixed(2)}</div></div><div class="res-bf-details">${bfs.map(b => `<div class="bf-row">vs ${b.name}: ${b.val}</div>`).join('')}</div>`;
-                elements.resultCards.appendChild(row);
+                s.forEach((sj, j) => { 
+                    if (i !== j && s[i]>0 && s[j]>0) {
+                        const bf = calculateBF(s,p,i,j);
+                        bfs.push({name: names[j], val: bf.toFixed(2), re: (bf/(1+bf)*100).toFixed(1)});
+                    }
+                });
+                const card = document.createElement('div'); card.className = 'res-card';
+                card.innerHTML = `<div class="res-card-main"><div><div class="res-player">${names[i]}<span class="avg-bf-tag">Avg BF: ${(bfs.reduce((a,b)=>a+parseFloat(b.val),0)/Math.max(1,bfs.length)).toFixed(2)}</span></div><div class="res-risk">Risk Score: ${rs.toFixed(1)}</div></div><div class="res-ev">${ev.toFixed(2)}</div></div><div class="res-bf-details">${bfs.map(b => `<div class="bf-row">vs ${b.name}: <strong>${b.val}</strong> <span class="bf-re">(RE: ${b.re}%)</span></div>`).join('')}</div>`;
+                elements.resultCards.appendChild(card);
             });
             elements.resultsDisplay.classList.remove('hidden');
         } else {
             const hIdx = parseInt(elements.heroSelect.value), vIdx = parseInt(elements.villainSelect.value);
-            const risk = Math.min(s[hIdx], s[vIdx]);
-            const evFold = calculateICM(s, p)[hIdx];
-            const ws = [...s]; ws[hIdx] += risk; ws[vIdx] -= risk; const evWin = calculateICM(ws, p)[hIdx];
-            const ls = [...s]; ls[hIdx] -= risk; ls[vIdx] += risk; const evLose = calculateICM(ls, p)[hIdx];
-            const pReq = (evFold - evLose) / (evWin - evLose);
+            const r = Math.min(s[hIdx], s[vIdx]);
+            const ef = calculateICM(s, p)[hIdx];
+            const ws = [...s]; ws[hIdx] += r; ws[vIdx] -= r; const ew = calculateICM(ws, p)[hIdx];
+            const ls = [...s]; ls[hIdx] -= r; ls[vIdx] += r; const el = calculateICM(ls, p)[hIdx];
+            const pReq = (ef - el) / (ew - el);
             elements.reqEquity.innerText = `Req. Equity: ${(pReq * 100).toFixed(1)}%`;
             elements.heatmapGrid.innerHTML = '';
             for (let i = 0; i < 13; i++) {
                 for (let j = 0; j < 13; j++) {
-                    const r1 = RANKS[i], r2 = RANKS[j], hand = i === j ? r1+r1 : (i < j ? r1+r2+'s' : r2+r1+'o');
-                    const eq = getPrecisionEquity(hand, villainSelectedHands);
+                    const hStr = RANKS[i] + (i===j ? RANKS[i] : (i<j ? RANKS[j]+'s' : RANKS[j]+'o'));
+                    const eq = getPrecisionEquity(hStr, villainSelectedHands);
                     const cell = document.createElement('div');
-                    cell.className = `hand-cell ${eq >= pReq ? 'call' : 'fold'} ${elements.specificHand.value && hand === elements.specificHand.value.slice(0,2) ? 'hero-target' : ''}`;
-                    cell.innerHTML = `<span>${hand}</span><span class="eq-val">${(eq*100).toFixed(0)}%</span>`;
+                    cell.className = `hand-cell ${eq >= pReq ? 'call' : 'fold'} ${elements.specificHand.value && hStr === elements.specificHand.value.slice(0,2) ? 'hero-target' : ''}`;
+                    cell.innerHTML = `<span>${hStr}</span><span class="eq-val">${(eq*100).toFixed(0)}%</span>`;
                     elements.heatmapGrid.appendChild(cell);
                 }
             }
