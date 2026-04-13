@@ -1,5 +1,5 @@
 /** 
- * ICM Calculator & Range Analyzer (v1.6.0 Stable Legacy)
+ * ICM Calculator & Range Analyzer (v1.6.1 Legacy Stable + Analysis Details)
  */
 
 const RANKS = 'AKQJT98765432';
@@ -22,7 +22,7 @@ function updateStats(handsSet, displayId, comboId) {
     return parseFloat(pct);
 }
 
-// --- Stable ICM Engine ---
+// --- ICM Engine ---
 function calculateICM(stacks, payouts) {
     const n = stacks.length;
     if (n === 0) return [];
@@ -54,7 +54,7 @@ function calculateICM(stacks, payouts) {
         const currentPrizeValue = fullPayouts[payoutIdx] || 0;
         playerIndices.forEach(p => {
             const probWinsThisPlace = normStacks[p] / subsetTotal;
-            const remainingPlayers = playerIndices.filter(i => i !== p);
+            const remainingPlayers = playerIndices.filter(i => i !== p) || [];
             const subRes = computePrizeEVs(remainingPlayers, payoutIdx + 1);
             evs[p] += probWinsThisPlace * currentPrizeValue;
             for (const q in subRes) evs[q] += probWinsThisPlace * subRes[q];
@@ -69,26 +69,6 @@ function calculateICM(stacks, payouts) {
     return allIndices.map(i => resultDict[i] || 0);
 }
 
-// --- Robust Equity Model (v1.2.1 Stable Style) ---
-function getEquity(hand, vRangePct) {
-    const r1 = hand[0], r2 = hand[1];
-    const v1 = RANKS.indexOf(r1), v2 = RANKS.indexOf(r2);
-    const isPair = r1 === r2, isSuited = hand.endsWith('s');
-    
-    let base;
-    if (isPair) {
-        base = 0.85 - (v1 * 0.02);
-        if (v1 <= 1) base = Math.max(base, 0.82); // AA, KK
-    } else {
-        base = 0.47 + ((12-v1)*0.03) + ((12-v2)*0.01);
-        if (isSuited) base += 0.05;
-    }
-
-    // 相手がタイトなほど勝率は落ちるが、極端な落差は避ける
-    const tightnessMod = (1.0 - (vRangePct / 100)) * 0.25;
-    return Math.max(0.05, Math.min(0.98, base - tightnessMod));
-}
-
 function calculateBF(stacks, payouts, heroIdx, villainIdx) {
     if (heroIdx === villainIdx) return 1.0;
     const evsNow = calculateICM(stacks, payouts);
@@ -98,7 +78,6 @@ function calculateBF(stacks, payouts, heroIdx, villainIdx) {
     const evWin = calculateICM(ws, payouts)[heroIdx];
     const ls = [...stacks]; ls[heroIdx] -= risk; ls[villainIdx] += risk;
     const evLose = calculateICM(ls, payouts)[heroIdx];
-    
     const reward = evWin - evNow;
     const cost = evNow - evLose;
     if (reward <= 0) return 9.99;
@@ -107,6 +86,18 @@ function calculateBF(stacks, payouts, heroIdx, villainIdx) {
 
 function calculateRiskScore(stack, orbitLeft) {
     return orbitLeft / (stack / 1.5 || 0.1);
+}
+
+function getEquity(hand, vRangePct) {
+    const r1 = hand[0], r2 = hand[1];
+    const v1 = RANKS.indexOf(r1), v2 = RANKS.indexOf(r2);
+    const isPair = r1 === r2;
+    const isSuited = hand.endsWith('s');
+    let base = isPair ? (0.85 - v1 * 0.02) : (0.47 + (12-v1)*0.03 + (12-v2)*0.01);
+    if (v1 <= 1 && isPair) base = Math.max(base, 0.82); // AA, KK 保護
+    if (isSuited) base += 0.05;
+    const tightnessMod = (1.0 - (vRangePct / 100)) * 0.25;
+    return Math.max(0.05, Math.min(0.98, base - tightnessMod));
 }
 
 // --- UI Logic ---
@@ -156,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     [50, 31, 19].forEach(v => createRow(elements.payoutList, 'payout', v));
-    [100, 80, 50, 30, 20].forEach((s, i) => createRow(elements.playerList, 'player', `P${i+1}`, s));
+    [100, 80, 50, 30, 20].forEach((s, idx) => createRow(elements.playerList, 'player', `P${idx+1}`, s));
 
     elements.modeIcm.onclick = () => { currentMode = 'icm'; elements.modeIcm.classList.add('active'); elements.modeRange.classList.remove('active'); elements.rangeSettings.classList.add('hidden'); };
     elements.modeRange.onclick = () => { currentMode = 'range'; elements.modeRange.classList.add('active'); elements.modeIcm.classList.remove('active'); elements.rangeSettings.classList.remove('hidden'); updateSelectionPool(); };
@@ -193,9 +184,26 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.resultCards.innerHTML = '';
             results.forEach((ev, i) => {
                 let bfs = [];
-                s.forEach((sj, j) => { if (i!==j && s[i]>0 && s[j]>0) { let bf = calculateBF(s,p,i,j); bfs.push({n: names[j], v: bf.toFixed(2), re: (bf/(1+bf)*100).toFixed(1)}); } });
+                s.forEach((sj, j) => {
+                    if (i !== j && s[i] > 0 && s[j] > 0) {
+                        const bf = calculateBF(s, p, i, j);
+                        bfs.push({ name: names[j], val: bf.toFixed(2), re: (bf / (1 + bf) * 100).toFixed(1) });
+                    }
+                });
+                const avgBf = (bfs.length > 0) ? (bfs.reduce((a, b) => a + parseFloat(b.val), 0) / bfs.length).toFixed(2) : "1.00";
                 const row = document.createElement('div'); row.className = 'res-card';
-                row.innerHTML = `<div class="res-card-main"><div><div class="res-player">${names[i]} <span class="avg-bf-tag">Avg BF: ${(bfs.reduce((a,b)=>a+parseFloat(b.v),0)/Math.max(1,bfs.length)).toFixed(2)}</span></div><div class="res-risk">Risk: ${calculateRiskScore(s[i], i+1).toFixed(1)}</div></div><div class="res-ev">${ev.toFixed(2)}</div></div><div class="res-bf-details">${bfs.map(b => `<div class="bf-row">vs ${b.n}: <strong>${b.v}</strong> <span class="bf-re">(RE: ${b.re}%)</span></div>`).join('')}</div>`;
+                row.innerHTML = `
+                    <div class="res-card-main">
+                        <div>
+                            <div class="res-player">${names[i]} <span class="avg-bf-tag">Avg BF: ${avgBf}</span></div>
+                            <div class="res-risk">Risk Score: ${calculateRiskScore(s[i], i+1).toFixed(1)}</div>
+                        </div>
+                        <div class="res-ev">${ev.toFixed(2)}</div>
+                    </div>
+                    <div class="res-bf-details">
+                        ${bfs.map(b => `<div class="bf-row">vs ${b.name}: <strong>${b.val}</strong> <span class="bf-re">(RE: ${b.re}%)</span></div>`).join('')}
+                    </div>
+                `;
                 elements.resultCards.appendChild(row);
             });
             elements.resultsDisplay.classList.remove('hidden');
@@ -213,7 +221,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (let j=0; j<13; j++) {
                     const hStr = RANKS[i] + (i===j ? RANKS[i] : (i<j ? RANKS[j]+'s' : RANKS[j]+'o'));
                     const eq = getEquity(hStr, vPct);
-                    const cell = document.createElement('div'); cell.className = `hand-cell ${eq >= pr ? 'call' : 'fold'} ${elements.specificHand.value && hStr === elements.specificHand.value.slice(0,2) ? 'hero-target' : ''}`;
+                    const cell = document.createElement('div');
+                    cell.className = `hand-cell ${eq >= pr ? 'call' : 'fold'} ${elements.specificHand.value && hStr === elements.specificHand.value.slice(0,2) ? 'hero-target' : ''}`;
                     cell.innerHTML = `<span>${hStr}</span><span class="eq-val">${(eq*100).toFixed(0)}%</span>`;
                     elements.heatmapGrid.appendChild(cell);
                 }
