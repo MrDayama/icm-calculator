@@ -1,20 +1,33 @@
-# ICM Calculator Pro
+# ICM Calculator Pro - Advanced Analysis Edition
 
-A high-performance Independent Chip Model (ICM) calculator for poker tournaments.
+ポーカートーナメントにおける賞金期待値（ICM）を、プロレベルの精度で分析するための強力なツールキットです。
 
-## Features
-- **Accurate ICM EV Calculation**: Built with a recursive algorithm and memoization for speed.
-- **Support for 2-10 Players**: Handles large tables instantly (0.1s).
-- **Mobile Friendly**: Beautiful web interface that works on your desktop or smartphone browser.
-- **Python CLI**: For those who prefer the terminal.
+## 🌟 主な機能 (v1.1.0)
+- **レンジベース意思決定**: 1326コンボによる精密な期待値計算。
+- **Blocker効果 (カード除去)**: 自分のハンドが相手のレンジに与える影響を自動考慮。
+- **マルチウェイ対応**: 複数プレイヤー間の衝突時の勝率近似。
+- **次BBリスクスコア**: 直近の強制ベットによる圧迫を数値化。
+- **特定ハンド評価モード**: 特定のハンド（例: AhKd）に対する即時分析。
+- **高度なWeb UI**: ダークモード対応の美しいインターフェース。
 
-## How to use (Web)
-Simply open the `index.html` file in your browser or access the hosted GitHub Pages URL.
+## 📁 リポジトリ構成とブランチ
+- `main`: 安定版。
+- `feature/advanced-analysis`: 今回追加された高度分析機能が実装されている最新ブランチ。
 
-## How to use (Python)
+## 🛠 使い方
+
+### Web インターフェース
+`web/index.html` をブラウザで開くだけで、即座に分析を開始できます。
+
+### Python CLI (高度分析モード)
 ```bash
-python icm_tool.py --stacks 1000 800 500 --payouts 50 30 20 --format
+python cli_advanced.py --hand AhKd --stacks 10000 5000 2000 --payouts 50 30 --hero 2
 ```
 
-## Hosting (Internal)
-You can run `run_app.py` to host it locally for your phone on the same Wi-Fi.
+## 📖 ドキュメント
+- [ユーザーマニュアル (USER_MANUAL.md)](USER_MANUAL.md): 指標の定義と操作方法。
+- [技術仕様書 (SPECIFICATIONS.md)](SPECIFICATIONS.md): 内部アルゴリズムと設計詳細。
+
+## 📝 開発環境
+- Python 3.12+
+- WSL / Linux 環境推奨 (venv作成用)
